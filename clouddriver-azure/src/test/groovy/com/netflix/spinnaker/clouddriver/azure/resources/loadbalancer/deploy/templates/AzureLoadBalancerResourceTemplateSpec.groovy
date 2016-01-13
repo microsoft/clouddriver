@@ -98,7 +98,6 @@ class AzureLoadBalancerResourceTemplateSpec extends Specification {
   "parameters" : {
     "location" : {
       "type" : "string",
-      "allowedValues" : [ "East US", "eastus", "West US", "westus", "West Europe", "westeurope", "East Asia", "eastasia", "Southeast Asia", "southeastus" ],
       "metadata" : {
         "description" : "Location to deploy"
       }

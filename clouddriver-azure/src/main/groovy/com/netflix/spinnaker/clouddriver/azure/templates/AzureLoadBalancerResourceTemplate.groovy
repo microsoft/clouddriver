@@ -62,15 +62,13 @@ class AzureLoadBalancerResourceTemplate {
     String publicIPAddressID = "[resourceID('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
     String frontEndIPConfig = "[concat(variables('loadBalancerID'),'/frontendIPConfigurations/',variables('loadBalancerFrontEnd'))]"
 
-    LoadBalancerTemplateVariables(UpsertAzureLoadBalancerDescription description){
-      String regionName = description.region.replace(' ', '').toLowerCase()
-
+    LoadBalancerTemplateVariables(UpsertAzureLoadBalancerDescription description) {
       loadBalancerName = description.loadBalancerName
-      virtualNetworkName = "vnet-" + regionName + "-" + description.loadBalancerName
-      publicIPAddressName = "publicIp-" + regionName + "-" + description.loadBalancerName
-      loadBalancerFrontEnd = "lbFrontEnd-" + regionName + "-" + description.loadBalancerName
-      dnsNameForLBIP = "dns-" + regionName.toLowerCase() + "-" + description.loadBalancerName.toLowerCase()
-      ipConfigName = "ipConfig-" + regionName + "-" + description.loadBalancerName
+      virtualNetworkName = "vnet-" + description.appName.toLowerCase()
+      publicIPAddressName = "pip-" + description.appName.toLowerCase()
+      loadBalancerFrontEnd = "fe-" + description.appName.toLowerCase()
+      dnsNameForLBIP = description.appName.toLowerCase()
+      ipConfigName = "ipc-" + description.appName.toLowerCase()
     }
   }
 
@@ -80,7 +78,6 @@ class AzureLoadBalancerResourceTemplate {
 
   static class Location{
     String type = "string"
-    ArrayList<String> allowedValues = ["East US", "eastus", "West US", "westus", "West Europe", "westeurope", "East Asia", "eastasia", "Southeast Asia", "southeastus"]
     Map<String, String> metadata = ["description":"Location to deploy"]
   }
 
@@ -97,7 +94,6 @@ class AzureLoadBalancerResourceTemplate {
 
       properties = new LoadBalancerProperties(description)
     }
-
   }
 
   private static class AzureProbe {
@@ -163,46 +159,44 @@ class AzureLoadBalancerResourceTemplate {
     String type = '''Microsoft.Network/virtualNetworks'''
     String location = '''[parameters('location')]'''
     VirtualNetworkProperties properties = new VirtualNetworkProperties()
-  }
-
+    }
 
   static class VirtualNetworkProperties{
     AddressSpace addressSpace = new AddressSpace();
-  }
+    }
 
   static class AddressSpace{
     def addressPrefixes = ['''[variables('addressPrefix')]''']
     def subnets = [new Subnet()]
-  }
+    }
 
   static class Subnet{
     def name = '''[variables('subnetName')]'''
     def properties = new SubnetProperties()
-  }
+    }
 
   static class SubnetProperties{
     def addressPrefix = '''[variables('subnetPrefix')]'''
-  }
+    }
 
   static class PublicIpResource extends Resource{
-
     PublicIpResource() {
       apiVersion = '2015-05-01-preview'
       name = '''[variables('publicIPAddressName')]'''
       type = '''Microsoft.Network/publicIPAddresses'''
       location = '''[parameters('location')]'''
-    }
+      }
     PublicIPProperties properties = new PublicIPProperties()
-  }
+    }
 
   static class PublicIPProperties{
     String publicIPAllocationMethod = '''[variables('publicIPAddressType')]'''
     DnsSettings dnsSettings = new DnsSettings()
-  }
+    }
 
   static class DnsSettings{
     String domainNameLabel = '''[variables('dnsNameForLBIP')]'''
-  }
+    }
 
   static class NetworkInterface extends DependingResource{
 
