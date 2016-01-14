@@ -34,6 +34,7 @@ import com.microsoft.azure.management.resources.models.ResourceGroupListParamete
 import com.microsoft.azure.management.resources.models.ResourceGroupListResult
 import com.microsoft.azure.utility.ResourceHelper
 import com.microsoft.windowsazure.exception.ServiceException
+import com.netflix.spinnaker.clouddriver.azure.common.AzureUtilities
 import com.netflix.spinnaker.clouddriver.azure.security.AzureCredentials
 import groovy.transform.Canonical
 import groovy.json.JsonBuilder
@@ -71,7 +72,7 @@ class AzureResourceManagerClient extends AzureBaseClient {
       createResourceGroupVNet(credentials, resourceGroupName, region)
     }
 
-    String deploymentName = resourceName + "_deployment"
+    String deploymentName = resourceName + AzureUtilities.NAME_SEPARATOR +"deployment"
 
     DeploymentExtended deployment = createTemplateDeployment(this.getResourceManagementClient(credentials),
       resourceGroupName,
@@ -123,6 +124,10 @@ class AzureResourceManagerClient extends AzureBaseClient {
     this.getResourceManagementClient(creds).getResourceGroupsOperations().list(null).getResourceGroups()
   }
 
+  String getResourceGroupLocation(String resourceGroupName, AzureCredentials creds) {
+    this.getResourceManagementClient(creds).getResourceGroupsOperations().get(resourceGroupName).getResourceGroup().getLocation()
+  }
+
   void healthCheck(AzureCredentials creds) {
     try {
       this.getResourceManagementClient(creds).getResourcesOperations().list(null)
@@ -137,7 +142,7 @@ class AzureResourceManagerClient extends AzureBaseClient {
   }
 
   private static void createResourceGroupVNet(AzureCredentials creds, String resourceGroupName, String region) {
-    String vNetName = String.format("vnet-%s", resourceGroupName)
+    String vNetName = String.format("vnet"+AzureUtilities.NAME_SEPARATOR+"%s", resourceGroupName)
     creds.getNetworkClient().createVirtualNetwork(creds,resourceGroupName, vNetName, region)
   }
 
