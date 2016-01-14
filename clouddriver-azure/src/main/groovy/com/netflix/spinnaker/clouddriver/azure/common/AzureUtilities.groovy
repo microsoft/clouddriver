@@ -29,11 +29,11 @@ class AzureUtilities {
   }
 
   static String getResourceGroupName(AzureLoadBalancerDescription description) {
-    description.appName + "_" + description.region
+    description.appName + "-" + description.region
   }
 
   static String getResourceGroupName(String appName, String region) {
-    appName + "_" + region.replace(' ', '').toLowerCase()
+    appName + "-" + region.replace(' ', '').toLowerCase()
   }
 
 }

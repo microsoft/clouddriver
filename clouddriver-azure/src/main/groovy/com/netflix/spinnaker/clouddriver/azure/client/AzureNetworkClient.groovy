@@ -18,6 +18,7 @@ package com.netflix.spinnaker.clouddriver.azure.client
 
 import com.microsoft.azure.management.network.NetworkResourceProviderClient
 import com.microsoft.azure.management.network.NetworkResourceProviderService
+import com.microsoft.azure.management.network.models.AddressSpace
 import com.microsoft.azure.management.network.models.AzureAsyncOperationResponse
 import com.microsoft.azure.management.network.models.LoadBalancer
 import com.microsoft.azure.management.network.models.VirtualNetwork
@@ -102,12 +103,18 @@ class AzureNetworkClient extends AzureBaseClient {
    * @param virtualNetworkName name of the virtual network to create
    * @param region region to create the resource in
    */
-  void createVirtualNetwork(AzureCredentials creds, String resourceGroupName, String virtualNetworkName, String region) {
+  void createVirtualNetwork(AzureCredentials creds, String resourceGroupName, String virtualNetworkName, String region, String addressPrefix = "10.0.0.0/16") {
     try {
+
+      def virtualNetwork = new VirtualNetwork(region)
+      AddressSpace addressSpace = new AddressSpace()
+      addressSpace.addressPrefixes.add(addressPrefix)
+      virtualNetwork.setAddressSpace(addressSpace)
+
       //Create the virtual network for the resource group
       AzureAsyncOperationResponse response = this.getNetworkResourceProviderClient(creds).
         getVirtualNetworksOperations().
-        createOrUpdate(resourceGroupName, virtualNetworkName, new VirtualNetwork(region))
+        createOrUpdate(resourceGroupName, virtualNetworkName, virtualNetwork)
     }
     catch (e) {
       throw new RuntimeException("Unable to create Virtual network ${virtualNetworkName} in Resource Group ${resourceGroupName}", e)
