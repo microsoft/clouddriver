@@ -16,6 +16,7 @@
 
 package com.netflix.spinnaker.clouddriver.azure.templates
 
+import com.netflix.spinnaker.clouddriver.azure.common.AzureUtilities
 import com.netflix.spinnaker.clouddriver.azure.resources.loadbalancer.model.AzureLoadBalancerDescription
 import com.netflix.spinnaker.clouddriver.azure.resources.loadbalancer.model.UpsertAzureLoadBalancerDescription
 import org.codehaus.jackson.map.ObjectMapper
@@ -62,13 +63,16 @@ class AzureLoadBalancerResourceTemplate {
     String publicIPAddressID = "[resourceID('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
     String frontEndIPConfig = "[concat(variables('loadBalancerID'),'/frontendIPConfigurations/',variables('loadBalancerFrontEnd'))]"
 
-    LoadBalancerTemplateVariables(UpsertAzureLoadBalancerDescription description) {
-      loadBalancerName = description.loadBalancerName
-      virtualNetworkName = "vnet-" + description.appName.toLowerCase()
-      publicIPAddressName = "pip-" + description.appName.toLowerCase()
-      loadBalancerFrontEnd = "fe-" + description.appName.toLowerCase()
-      dnsNameForLBIP = description.appName.toLowerCase()
-      ipConfigName = "ipc-" + description.appName.toLowerCase()
+    LoadBalancerTemplateVariables(UpsertAzureLoadBalancerDescription description){
+      String regionName = description.region.replace(' ', '').toLowerCase()
+      String resourceGroupName = AzureUtilities.getResourceGroupName(description)
+
+      loadBalancerName = description.loadBalancerName.toLowerCase()
+      virtualNetworkName = AzureUtilities.VNET_NAME_PREFIX + resourceGroupName.toLowerCase()
+      publicIPAddressName = AzureUtilities.PUBLICIP_NAME_PREFIX + description.loadBalancerName.toLowerCase()
+      loadBalancerFrontEnd = AzureUtilities.LBFRONTEND_NAME_PREFIX + description.loadBalancerName.toLowerCase()
+      dnsNameForLBIP = AzureUtilities.DNS_NAME_PREFIX + description.appName.toLowerCase()
+      ipConfigName = AzureUtilities.IPCONFIG_NAME_PREFIX + description.loadBalancerName.toLowerCase()
     }
   }
 

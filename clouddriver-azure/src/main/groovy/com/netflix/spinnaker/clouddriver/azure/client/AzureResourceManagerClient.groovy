@@ -53,34 +53,25 @@ class AzureResourceManagerClient extends AzureBaseClient {
   }
 
   DeploymentExtended createResourceFromTemplate(AzureCredentials credentials,
-                                                String template,
-                                                String resourceGroupName,
-                                                String region,
-                                                String resourceName) {
-    def parameters = [location : region]
-    createResourceFromTemplate(credentials, template, parameters, resourceGroupName, region, resourceName)
-  }
+                                        String template,
+                                        String resourceGroupName,
+                                        String region,
+                                        String resourceName) {
 
-  DeploymentExtended createResourceFromTemplate(AzureCredentials credentials,
-                                                String template,
-                                                Map<String, String> templateParams,
-                                                String resourceGroupName,
-                                                String region,
-                                                String resourceName) {
     if (!resourceGroupExists(credentials, resourceGroupName)) {
       createResourceGroup(credentials, resourceGroupName, region)
       createResourceGroupVNet(credentials, resourceGroupName, region)
     }
 
     String deploymentName = resourceName + AzureUtilities.NAME_SEPARATOR +"deployment"
+    def templateParams = [location : region]
 
     DeploymentExtended deployment = createTemplateDeployment(this.getResourceManagementClient(credentials),
-      resourceGroupName,
-      DeploymentMode.Incremental,
-      deploymentName,
-      template,
-      templateParams)
-
+                                                                     resourceGroupName,
+                                                                     DeploymentMode.Incremental,
+                                                                     deploymentName,
+                                                                     template,
+                                                                     templateParams)
     deployment
   }
 
@@ -142,8 +133,8 @@ class AzureResourceManagerClient extends AzureBaseClient {
   }
 
   private static void createResourceGroupVNet(AzureCredentials creds, String resourceGroupName, String region) {
-    String vNetName = String.format("vnet"+AzureUtilities.NAME_SEPARATOR+"%s", resourceGroupName)
-    creds.getNetworkClient().createVirtualNetwork(creds,resourceGroupName, vNetName, region)
+    def vNetName = AzureUtilities.VNET_NAME_PREFIX + resourceGroupName
+    creds.getNetworkClient().createVirtualNetwork(creds, resourceGroupName, vNetName, region)
   }
 
   private static DeploymentExtended createTemplateDeployment(
