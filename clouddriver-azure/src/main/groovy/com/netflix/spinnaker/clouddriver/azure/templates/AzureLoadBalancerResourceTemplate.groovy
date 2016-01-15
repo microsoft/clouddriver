@@ -98,7 +98,6 @@ class AzureLoadBalancerResourceTemplate {
 
       properties = new LoadBalancerProperties(description)
     }
-
   }
 
   private static class AzureProbe {
@@ -164,46 +163,44 @@ class AzureLoadBalancerResourceTemplate {
     String type = '''Microsoft.Network/virtualNetworks'''
     String location = '''[parameters('location')]'''
     VirtualNetworkProperties properties = new VirtualNetworkProperties()
-  }
-
+    }
 
   static class VirtualNetworkProperties{
     AddressSpace addressSpace = new AddressSpace();
-  }
+    }
 
   static class AddressSpace{
     def addressPrefixes = ['''[variables('addressPrefix')]''']
     def subnets = [new Subnet()]
-  }
+    }
 
   static class Subnet{
     def name = '''[variables('subnetName')]'''
     def properties = new SubnetProperties()
-  }
+    }
 
   static class SubnetProperties{
     def addressPrefix = '''[variables('subnetPrefix')]'''
-  }
+    }
 
   static class PublicIpResource extends Resource{
-
     PublicIpResource() {
       apiVersion = '2015-05-01-preview'
       name = '''[variables('publicIPAddressName')]'''
       type = '''Microsoft.Network/publicIPAddresses'''
       location = '''[parameters('location')]'''
-    }
+      }
     PublicIPProperties properties = new PublicIPProperties()
-  }
+    }
 
   static class PublicIPProperties{
     String publicIPAllocationMethod = '''[variables('publicIPAddressType')]'''
     DnsSettings dnsSettings = new DnsSettings()
-  }
+    }
 
   static class DnsSettings{
     String domainNameLabel = '''[variables('dnsNameForLBIP')]'''
-  }
+    }
 
   static class NetworkInterface extends DependingResource{
 

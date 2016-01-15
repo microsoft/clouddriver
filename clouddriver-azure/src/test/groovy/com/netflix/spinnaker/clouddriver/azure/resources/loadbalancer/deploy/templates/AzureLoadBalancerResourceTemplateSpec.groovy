@@ -51,7 +51,7 @@ class AzureLoadBalancerResourceTemplateSpec extends Specification {
     description.loadBalancerName = 'azureMASM-st1-d11'
     description.stack = 'st1'
     description.detail = 'd11'
-    description.region = 'westus'
+    description.region = 'West US'
     description.vnet = null
     description.probes = new ArrayList<AzureLoadBalancerDescription.AzureLoadBalancerProbe>()
 
@@ -104,13 +104,13 @@ class AzureLoadBalancerResourceTemplateSpec extends Specification {
     }
   },
   "variables" : {
-    "loadBalancerName" : "azuremasm-st1-d11",
-    "virtualNetworkName" : "vnet-azuremasm-westus",
-    "publicIPAddressName" : "pip-azuremasm-st1-d11",
+    "loadBalancerName" : "azureMASM-st1-d11",
+    "virtualNetworkName" : "vnet-westus-azureMASM-st1-d11",
+    "publicIPAddressName" : "publicIp-westus-azureMASM-st1-d11",
     "publicIPAddressType" : "Dynamic",
-    "loadBalancerFrontEnd" : "fe-azuremasm-st1-d11",
-    "dnsNameForLBIP" : "dns-azuremasm",
-    "ipConfigName" : "ipc-azuremasm-st1-d11",
+    "loadBalancerFrontEnd" : "lbFrontEnd-westus-azureMASM-st1-d11",
+    "dnsNameForLBIP" : "dns-westus-azuremasm-st1-d11",
+    "ipConfigName" : "ipConfig-westus-azureMASM-st1-d11",
     "loadBalancerID" : "[resourceID('Microsoft.Network/loadBalancers',variables('loadBalancerName'))]",
     "publicIPAddressID" : "[resourceID('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]",
     "frontEndIPConfig" : "[concat(variables('loadBalancerID'),'/frontendIPConfigurations/',variables('loadBalancerFrontEnd'))]"

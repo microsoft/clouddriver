@@ -22,6 +22,7 @@ import com.microsoft.azure.management.network.models.AddressSpace
 import com.microsoft.azure.management.network.models.AzureAsyncOperationResponse
 import com.microsoft.azure.management.network.models.LoadBalancer
 import com.microsoft.azure.management.network.models.VirtualNetwork
+import com.microsoft.azure.management.network.models.Subnet
 import com.microsoft.azure.utility.NetworkHelper
 import com.microsoft.windowsazure.core.OperationResponse
 import com.netflix.spinnaker.clouddriver.azure.common.AzureUtilities
@@ -99,7 +100,7 @@ class AzureNetworkClient extends AzureBaseClient {
     def loadBalancer = getNetworkResourceProviderClient(creds).getLoadBalancersOperations().get(resourceGroupName, loadBalancerName).getLoadBalancer()
 
     if (loadBalancer.frontendIpConfigurations.size() != 1) {
-      throw new RuntimeException("Unexpected number of public IP addresses associated with the load balancer (should be only one)!")
+      throw new Exception("Unexpected number of public IP addresses associated with the load balancer (should be only one)!")
     }
 
     def publicIpAddressName = AzureUtilities.getResourceNameFromID(loadBalancer.frontendIpConfigurations.first().getPublicIpAddress().id)
@@ -132,6 +133,7 @@ class AzureNetworkClient extends AzureBaseClient {
       throw new RuntimeException("Unable to create Virtual network ${virtualNetworkName} in Resource Group ${resourceGroupName}", e)
     }
   }
+
   /**
    * Retrieve a collection of all subnets for a give set of credentials, regardless of resource group/region
    * @param creds the credentials to use when communicating to the Azure subscription(s)
@@ -143,7 +145,7 @@ class AzureNetworkClient extends AzureBaseClient {
     def result = new ArrayList<AzureSubnetDescription>()
 
     for (VirtualNetwork item : list) {
-      for (com.microsoft.azure.management.network.models.Subnet itemSubnet : item.subnets) {
+      for (Subnet itemSubnet : item.subnets) {
         def subnetItem = new AzureSubnetDescription()
         subnetItem.name = itemSubnet.name
         subnetItem.region = item.location
@@ -183,7 +185,7 @@ class AzureNetworkClient extends AzureBaseClient {
       vnetItem.resourceGuid = item.resourceGuid
 
       def resultSubnet = new ArrayList<AzureSubnetDescription>()
-      for (com.microsoft.azure.management.network.models.Subnet itemSubnet : item.subnets) {
+      for (Subnet itemSubnet : item.subnets) {
         def subnetItem = new AzureSubnetDescription()
         subnetItem.name = itemSubnet.name
         subnetItem.region = item.location
@@ -218,7 +220,7 @@ class AzureNetworkClient extends AzureBaseClient {
   String getDnsNameForLoadBalancer(AzureCredentials creds, String resourceGroupName, String loadBalancerName) {
     def loadBalancer = this.getNetworkResourceProviderClient(creds).getLoadBalancersOperations().get(resourceGroupName, loadBalancerName).getLoadBalancer()
     if (loadBalancer.frontendIpConfigurations.size() != 1) {
-      throw new RuntimeException("Unexpected number of public IP addresses associated with the load balancer (should be only one)!")
+      throw new Exception("Unexpected number of public IP addresses associated with the load balancer (should be only one)!")
     }
 
     def publicIpResource = loadBalancer.frontendIpConfigurations.first().getPublicIpAddress().id
