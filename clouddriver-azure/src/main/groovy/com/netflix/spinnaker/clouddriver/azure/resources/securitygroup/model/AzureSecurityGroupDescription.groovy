@@ -21,6 +21,7 @@ import com.netflix.spinnaker.clouddriver.azure.resources.subnet.model.AzureSubne
 import com.microsoft.azure.management.network.models.NetworkSecurityGroup
 
 class AzureSecurityGroupDescription extends AzureResourceOpsDescription {
+  String securityGroupName
   String id
   String etag
   String location

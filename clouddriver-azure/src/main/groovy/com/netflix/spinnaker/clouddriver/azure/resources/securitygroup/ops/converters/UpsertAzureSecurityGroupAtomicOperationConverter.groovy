@@ -14,32 +14,31 @@
  * limitations under the License.
  */
 
-package com.netflix.spinnaker.clouddriver.azure.resources.loadbalancer.ops.converters
+package com.netflix.spinnaker.clouddriver.azure.resources.securitygroup.ops.converters
 
 import com.netflix.spinnaker.clouddriver.azure.common.AzureAtomicOperationConverterHelper
 import com.netflix.spinnaker.clouddriver.orchestration.AtomicOperation
 import com.netflix.spinnaker.clouddriver.orchestration.AtomicOperations
 import com.netflix.spinnaker.clouddriver.security.AbstractAtomicOperationsCredentialsSupport
-import com.netflix.spinnaker.clouddriver.azure.resources.loadbalancer.model.UpsertAzureLoadBalancerDescription
-import com.netflix.spinnaker.clouddriver.azure.resources.loadbalancer.ops.UpsertAzureLoadBalancerAtomicOperation
+import com.netflix.spinnaker.clouddriver.azure.resources.securitygroup.model.UpsertAzureSecurityGroupDescription
+import com.netflix.spinnaker.clouddriver.azure.resources.securitygroup.ops.UpsertAzureSecurityGroupAtomicOperation
 import com.netflix.spinnaker.clouddriver.azure.AzureOperation
 import groovy.util.logging.Slf4j
 import org.springframework.stereotype.Component
 
 @Slf4j
-@AzureOperation(AtomicOperations.UPSERT_LOAD_BALANCER)
-@Component("upsertAzureLoadBalancerDescription")
-class UpsertAzureLoadBalancerAtomicOperationConverter extends AbstractAtomicOperationsCredentialsSupport {
-  UpsertAzureLoadBalancerAtomicOperationConverter() {
-    log.info("Constructor....UpsertAzureLoadBalancerAtomicOperationConverter")
+@AzureOperation(AtomicOperations.UPSERT_SECURITY_GROUP)
+@Component("upsertAzureSecurityGroupDescription")
+class UpsertAzureSecurityGroupAtomicOperationConverter extends AbstractAtomicOperationsCredentialsSupport {
+  UpsertAzureSecurityGroupAtomicOperationConverter() {
+    log.info("Constructor....UpsertAzureSecurityGroupAtomicOperationConverter")
   }
 
   AtomicOperation convertOperation(Map input) {
-    new UpsertAzureLoadBalancerAtomicOperation(convertDescription(input))
+    new UpsertAzureSecurityGroupAtomicOperation(convertDescription(input))
   }
 
-  UpsertAzureLoadBalancerDescription convertDescription(Map input) {
-    AzureAtomicOperationConverterHelper.convertDescription(input, this, UpsertAzureLoadBalancerDescription)
+  UpsertAzureSecurityGroupDescription convertDescription(Map input) {
+    AzureAtomicOperationConverterHelper.convertDescription(input, this, UpsertAzureSecurityGroupDescription)
   }
 }
-

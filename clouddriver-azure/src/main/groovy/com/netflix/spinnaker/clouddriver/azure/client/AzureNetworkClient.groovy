@@ -22,7 +22,6 @@ import com.microsoft.azure.management.network.models.AddressSpace
 import com.microsoft.azure.management.network.models.AzureAsyncOperationResponse
 import com.microsoft.azure.management.network.models.LoadBalancer
 import com.microsoft.azure.management.network.models.VirtualNetwork
-import com.microsoft.azure.management.network.models.Subnet
 import com.microsoft.azure.utility.NetworkHelper
 import com.microsoft.windowsazure.core.OperationResponse
 import com.netflix.spinnaker.clouddriver.azure.common.AzureUtilities
@@ -100,13 +99,26 @@ class AzureNetworkClient extends AzureBaseClient {
     def loadBalancer = getNetworkResourceProviderClient(creds).getLoadBalancersOperations().get(resourceGroupName, loadBalancerName).getLoadBalancer()
 
     if (loadBalancer.frontendIpConfigurations.size() != 1) {
-      throw new Exception("Unexpected number of public IP addresses associated with the load balancer (should be only one)!")
+      throw new RuntimeException("Unexpected number of public IP addresses associated with the load balancer (should be only one)!")
     }
 
     def publicIpAddressName = AzureUtilities.getResourceNameFromID(loadBalancer.frontendIpConfigurations.first().getPublicIpAddress().id)
     this.getNetworkResourceProviderClient(creds).getLoadBalancersOperations().delete(resourceGroupName, loadBalancerName)
 
     this.getNetworkResourceProviderClient(creds).getPublicIpAddressesOperations().delete(resourceGroupName, publicIpAddressName)
+  }
+
+  /**
+   * Delete a network security group in Azure
+   * @param creds the credentials to use when communicating to the Azure subscription(s)
+   * @param resourceGroupName name of the resource group where the load balancer was created (see application name and region/location)
+   * @param securityGroupName name of the Azure network security group to delete
+   * @return an OperationResponse object
+   */
+  OperationResponse deleteSecurityGroup(AzureCredentials creds, String resourceGroupName, String securityGroupName) {
+    def securityGroup = getNetworkResourceProviderClient(creds).getNetworkSecurityGroupsOperations().get(resourceGroupName, securityGroupName).getNetworkSecurityGroup()
+
+    this.getNetworkResourceProviderClient(creds).getNetworkSecurityGroupsOperations().delete(resourceGroupName, securityGroupName)
   }
 
   /**
@@ -133,7 +145,6 @@ class AzureNetworkClient extends AzureBaseClient {
       throw new RuntimeException("Unable to create Virtual network ${virtualNetworkName} in Resource Group ${resourceGroupName}", e)
     }
   }
-
   /**
    * Retrieve a collection of all subnets for a give set of credentials, regardless of resource group/region
    * @param creds the credentials to use when communicating to the Azure subscription(s)
@@ -145,7 +156,7 @@ class AzureNetworkClient extends AzureBaseClient {
     def result = new ArrayList<AzureSubnetDescription>()
 
     for (VirtualNetwork item : list) {
-      for (Subnet itemSubnet : item.subnets) {
+      for (com.microsoft.azure.management.network.models.Subnet itemSubnet : item.subnets) {
         def subnetItem = new AzureSubnetDescription()
         subnetItem.name = itemSubnet.name
         subnetItem.region = item.location
@@ -185,7 +196,7 @@ class AzureNetworkClient extends AzureBaseClient {
       vnetItem.resourceGuid = item.resourceGuid
 
       def resultSubnet = new ArrayList<AzureSubnetDescription>()
-      for (Subnet itemSubnet : item.subnets) {
+      for (com.microsoft.azure.management.network.models.Subnet itemSubnet : item.subnets) {
         def subnetItem = new AzureSubnetDescription()
         subnetItem.name = itemSubnet.name
         subnetItem.region = item.location
@@ -220,7 +231,7 @@ class AzureNetworkClient extends AzureBaseClient {
   String getDnsNameForLoadBalancer(AzureCredentials creds, String resourceGroupName, String loadBalancerName) {
     def loadBalancer = this.getNetworkResourceProviderClient(creds).getLoadBalancersOperations().get(resourceGroupName, loadBalancerName).getLoadBalancer()
     if (loadBalancer.frontendIpConfigurations.size() != 1) {
-      throw new Exception("Unexpected number of public IP addresses associated with the load balancer (should be only one)!")
+      throw new RuntimeException("Unexpected number of public IP addresses associated with the load balancer (should be only one)!")
     }
 
     def publicIpResource = loadBalancer.frontendIpConfigurations.first().getPublicIpAddress().id

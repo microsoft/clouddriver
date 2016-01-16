@@ -53,10 +53,10 @@ class AzureResourceManagerClient extends AzureBaseClient {
   }
 
   DeploymentExtended createResourceFromTemplate(AzureCredentials credentials,
-                                        String template,
-                                        String resourceGroupName,
-                                        String region,
-                                        String resourceName) {
+                                                String template,
+                                                String resourceGroupName,
+                                                String region,
+                                                String resourceName) {
 
     if (!resourceGroupExists(credentials, resourceGroupName)) {
       createResourceGroup(credentials, resourceGroupName, region)
@@ -67,11 +67,12 @@ class AzureResourceManagerClient extends AzureBaseClient {
     def templateParams = [location : region]
 
     DeploymentExtended deployment = createTemplateDeployment(this.getResourceManagementClient(credentials),
-                                                                     resourceGroupName,
-                                                                     DeploymentMode.Incremental,
-                                                                     deploymentName,
-                                                                     template,
-                                                                     templateParams)
+      resourceGroupName,
+      DeploymentMode.Incremental,
+      deploymentName,
+      template,
+      templateParams)
+
     deployment
   }
 
@@ -134,10 +135,7 @@ class AzureResourceManagerClient extends AzureBaseClient {
 
   private static void createResourceGroupVNet(AzureCredentials creds, String resourceGroupName, String region) {
     def vNetName = AzureUtilities.VNET_NAME_PREFIX + resourceGroupName
-<<<<<<< HEAD
 
-=======
->>>>>>> a3f28810f8a3769d77eea607fc3b662d438ecfef
     creds.getNetworkClient().createVirtualNetwork(creds, resourceGroupName, vNetName, region)
   }
 
