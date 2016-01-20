@@ -40,28 +40,28 @@ class DeleteAzureSecurityGroupAtomicOperation implements AtomicOperation<Void> {
    */
   @Override
   Void operate(List priorOutputs) {
-    task.updateStatus BASE_PHASE, "Initializing deletion of load balancer $description.securityGroupName " +
-      "in $description.region..."
+    task.updateStatus BASE_PHASE, "Initializing Delete Azure Network Security Group Operation..."
+    for (region in description.regions) {
+      task.updateStatus BASE_PHASE, "Deleting ${description.securityGroupName} " + "in ${region}..."
 
-    if (!description.credentials) {
-      throw new IllegalArgumentException("Unable to resolve credentials for the selected Azure account.")
-    }
+      if (!description.credentials) {
+        throw new IllegalArgumentException("Unable to resolve credentials for the selected Azure account.")
+      }
 
-    try {
-      //TODO: insert real call to Azure resource manager object to delete the selected load balancer
-      String resourceGroupName = AzureUtilities.getResourceGroupName(description.appName, description.region)
+      try {
+        String resourceGroupName = AzureUtilities.getResourceGroupName(description.appName, region)
 
-      def op = description.credentials.networkClient.deleteSecurityGroup(description.credentials,
-        resourceGroupName,
-        description.securityGroupName)
+        def op = description.credentials.networkClient.deleteSecurityGroup(description.credentials,
+          resourceGroupName,
+          description.securityGroupName)
 
-      task.updateStatus BASE_PHASE, "Done deleting load balancer $description.securityGroupName in $description.region."
-    } catch (Exception e) {
-      task.updateStatus BASE_PHASE, String.format("Deployment of load balancer $description.securityGroupName failed: %s", e.message)
-      throw e
+        task.updateStatus BASE_PHASE, "Done deleting Azure network security group ${description.securityGroupName} in ${region}."
+      } catch (Exception e) {
+        task.updateStatus BASE_PHASE, String.format("Deletion of Azure network security group ${description.securityGroupName} failed: %s", e.message)
+        throw e
+      }
     }
 
     null
   }
-
 }

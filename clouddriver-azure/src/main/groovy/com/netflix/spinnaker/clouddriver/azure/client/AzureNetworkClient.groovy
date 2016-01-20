@@ -21,11 +21,13 @@ import com.microsoft.azure.management.network.NetworkResourceProviderService
 import com.microsoft.azure.management.network.models.AddressSpace
 import com.microsoft.azure.management.network.models.AzureAsyncOperationResponse
 import com.microsoft.azure.management.network.models.LoadBalancer
+import com.microsoft.azure.management.network.models.NetworkSecurityGroup
 import com.microsoft.azure.management.network.models.VirtualNetwork
 import com.microsoft.azure.utility.NetworkHelper
 import com.microsoft.windowsazure.core.OperationResponse
 import com.netflix.spinnaker.clouddriver.azure.common.AzureUtilities
 import com.netflix.spinnaker.clouddriver.azure.resources.network.model.AzureVirtualNetworkDescription
+import com.netflix.spinnaker.clouddriver.azure.resources.securitygroup.model.AzureSecurityGroupDescription
 import com.netflix.spinnaker.clouddriver.azure.resources.subnet.model.AzureSubnetDescription
 import com.netflix.spinnaker.clouddriver.azure.security.AzureCredentials
 import groovy.json.JsonBuilder
@@ -145,30 +147,78 @@ class AzureNetworkClient extends AzureBaseClient {
       throw new RuntimeException("Unable to create Virtual network ${virtualNetworkName} in Resource Group ${resourceGroupName}", e)
     }
   }
+
+  /**
+   * Retrieve a collection of all network security groups for a give set of credentials, regardless of resource group/region
+   * @param creds the credentials to use when communicating to the Azure subscription(s)
+   * @return a Collection of objects which represent a Network Security Group in Azure
+   */
+  Collection<AzureSecurityGroupDescription> getNetworkSecurityGroupsAll(AzureCredentials creds) {
+    def result = new ArrayList<AzureSecurityGroupDescription>()
+
+    this.getNetworkResourceProviderClient(creds).getNetworkSecurityGroupsOperations().listAll().networkSecurityGroups.each { item ->
+      def sgItem = new AzureSecurityGroupDescription()
+
+      sgItem.name = item.name
+      sgItem.location = item.location
+      sgItem.region = item.location
+      sgItem.cloudProvider = "azure"
+      sgItem.provisioningState = item.provisioningState
+      sgItem.resourceGuid = item.resourceGuid
+      sgItem.etag = item.etag
+      sgItem.id = item.id
+      sgItem.tags = item.tags
+      sgItem.type = item.type
+      // TODO: populate rules and subnet member lists
+      // sgItem.defaultSecurityRules += item.defaultSecurityRules
+      // sgItem.securityRules += item.securityRules
+      // sgItem.subnets += item.subnets
+      def networkInterfaces = new ArrayList<String>()
+      item.networkInterfaces?.each {networkInterfaces += it.id}
+      sgItem.networkInterfaces = networkInterfaces
+
+      result += sgItem
+    }
+
+    result
+  }
+
+  /**
+   * Retrieve a collection of subnet description objects for a given Azure VirtualNetwork object
+   * @param vnet the Azure VirtualNetwork
+   * @return a Collection of AzureSubnetDescription objects which represent a Subnet in Azure
+   */
+  Collection<AzureSubnetDescription> getSubnetForVirtualNetwork(VirtualNetwork vnet) {
+    def result = new ArrayList<AzureSubnetDescription>()
+
+    vnet.subnets?.each { itemSubnet ->
+      def subnetItem = new AzureSubnetDescription()
+      subnetItem.name = itemSubnet.name
+      subnetItem.region = vnet.location
+      subnetItem.cloudProvider = "azure"
+      subnetItem.provisioningState = itemSubnet.provisioningState
+      subnetItem.etag = itemSubnet.etag
+      subnetItem.id = itemSubnet.id
+      subnetItem.addressPrefix = itemSubnet.addressPrefix
+      //subnetItem.ipConfigurations = itemSubnet.ipConfigurations
+      subnetItem.networkSecurityGroup = itemSubnet.networkSecurityGroup?.id
+      subnetItem.routeTable = itemSubnet.routeTable?.id
+      result += subnetItem
+    }
+
+    result
+  }
+
   /**
    * Retrieve a collection of all subnets for a give set of credentials, regardless of resource group/region
    * @param creds the credentials to use when communicating to the Azure subscription(s)
    * @return a Collection of objects which represent a Subnet in Azure
    */
   Collection<AzureSubnetDescription> getSubnetsAll(AzureCredentials creds) {
-    def list = this.getNetworkResourceProviderClient(creds).getVirtualNetworksOperations().listAll().virtualNetworks
-
     def result = new ArrayList<AzureSubnetDescription>()
 
-    for (VirtualNetwork item : list) {
-      for (com.microsoft.azure.management.network.models.Subnet itemSubnet : item.subnets) {
-        def subnetItem = new AzureSubnetDescription()
-        subnetItem.name = itemSubnet.name
-        subnetItem.region = item.location
-        subnetItem.provisioningState = itemSubnet.provisioningState
-        subnetItem.etag = itemSubnet.etag
-        subnetItem.id = itemSubnet.id
-        subnetItem.addressPrefix = itemSubnet.addressPrefix
-        //subnetItem.ipConfigurations = itemSubnet.ipConfigurations
-        subnetItem.networkSecurityGroup = itemSubnet.networkSecurityGroup.id
-        subnetItem.routeTable = itemSubnet.routeTable.id
-        result += subnetItem
-      }
+    this.getNetworkResourceProviderClient(creds).getVirtualNetworksOperations().listAll().virtualNetworks.each { item->
+      getSubnetForVirtualNetwork(item).each {AzureSubnetDescription subnet -> result += subnet }
     }
 
     result
@@ -180,37 +230,20 @@ class AzureNetworkClient extends AzureBaseClient {
    * @return a Collection of objects which represent a Virtual Network in Azure
    */
   Collection<AzureVirtualNetworkDescription> getVirtualNetworksAll(AzureCredentials creds) {
-    def list = this.getNetworkResourceProviderClient(creds).getVirtualNetworksOperations().listAll().virtualNetworks
-
     def result = new ArrayList<AzureVirtualNetworkDescription>()
 
-    for (VirtualNetwork item : list) {
+    this.getNetworkResourceProviderClient(creds).getVirtualNetworksOperations().listAll().virtualNetworks.each { item ->
       def vnetItem = new AzureVirtualNetworkDescription()
+      def subnets = getSubnetForVirtualNetwork(item)
 
       vnetItem.name = item.name
       vnetItem.location = item.location
       vnetItem.region = item.location
-      vnetItem.addressSpace = item.addressSpace.addressPrefixes
-      vnetItem.dhcpOptions = item.dhcpOptions.dnsServers
+      vnetItem.addressSpace = item.addressSpace?.addressPrefixes
+      vnetItem.dhcpOptions = item.dhcpOptions?.dnsServers
       vnetItem.provisioningState = item.provisioningState
       vnetItem.resourceGuid = item.resourceGuid
-
-      def resultSubnet = new ArrayList<AzureSubnetDescription>()
-      for (com.microsoft.azure.management.network.models.Subnet itemSubnet : item.subnets) {
-        def subnetItem = new AzureSubnetDescription()
-        subnetItem.name = itemSubnet.name
-        subnetItem.region = item.location
-        subnetItem.provisioningState = itemSubnet.provisioningState
-        subnetItem.etag = itemSubnet.etag
-        subnetItem.id = itemSubnet.id
-        subnetItem.addressPrefix = itemSubnet.addressPrefix
-        //subnetItem.ipConfigurations = itemSubnet.ipConfigurations
-        subnetItem.networkSecurityGroup = itemSubnet.networkSecurityGroup.id
-        subnetItem.routeTable = itemSubnet.routeTable.id
-        resultSubnet += subnetItem
-      }
-
-      vnetItem.subnets = resultSubnet
+      vnetItem.subnets = subnets.toList()
       vnetItem.etag = item.etag
       vnetItem.id = item.id
       vnetItem.tags = item.tags

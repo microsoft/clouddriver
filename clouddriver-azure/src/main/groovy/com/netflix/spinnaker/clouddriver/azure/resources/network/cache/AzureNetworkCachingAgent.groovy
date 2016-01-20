@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package com.netflix.spinnaker.clouddriver.azure.resources.subnet.cache
+package com.netflix.spinnaker.clouddriver.azure.resources.network.cache
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.netflix.spinnaker.cats.agent.AccountAware
 import com.netflix.spinnaker.clouddriver.azure.AzureCloudProvider
 import com.netflix.spinnaker.clouddriver.azure.resources.common.cache.provider.AzureInfrastructureProvider
-import com.netflix.spinnaker.clouddriver.azure.resources.subnet.model.AzureSubnetDescription
+import com.netflix.spinnaker.clouddriver.azure.resources.network.model.AzureVirtualNetworkDescription
 import com.netflix.spinnaker.clouddriver.azure.security.AzureCredentials
 import com.netflix.spinnaker.clouddriver.azure.resources.common.cache.Keys
 
@@ -36,7 +36,7 @@ import com.netflix.spinnaker.cats.provider.ProviderCache
 import groovy.util.logging.Slf4j
 
 @Slf4j
-class AzureSubnetCachingAgent implements CachingAgent, AccountAware {
+class AzureNetworkCachingAgent implements CachingAgent, AccountAware {
 
   final AzureCloudProvider azureCloudProvider
   final String accountName
@@ -45,14 +45,14 @@ class AzureSubnetCachingAgent implements CachingAgent, AccountAware {
   final ObjectMapper objectMapper
 
   static final Set<AgentDataType> types = Collections.unmodifiableSet([
-    AUTHORITATIVE.forType(Keys.Namespace.SUBNETS.ns)
+    AUTHORITATIVE.forType(Keys.Namespace.NETWORKS.ns)
   ] as Set)
 
-  AzureSubnetCachingAgent(AzureCloudProvider azureCloudProvider,
-                           String accountName,
-                           AzureCredentials creds,
-                           String region,
-                           ObjectMapper objectMapper) {
+  AzureNetworkCachingAgent(AzureCloudProvider azureCloudProvider,
+                          String accountName,
+                          AzureCredentials creds,
+                          String region,
+                          ObjectMapper objectMapper) {
     this.azureCloudProvider = azureCloudProvider
     this.accountName = accountName
     this.creds = creds
@@ -67,7 +67,7 @@ class AzureSubnetCachingAgent implements CachingAgent, AccountAware {
 
   @Override
   String getAgentType() {
-    "${accountName}/${region}/${AzureSubnetCachingAgent.simpleName}"
+    "${accountName}/${region}/${AzureNetworkCachingAgent.simpleName}"
   }
 
   @Override
@@ -84,16 +84,16 @@ class AzureSubnetCachingAgent implements CachingAgent, AccountAware {
   CacheResult loadData(ProviderCache providerCache) {
     log.info("Describing items in ${agentType}")
 
-    def subnets = creds.networkClient.getSubnetsAll(creds)
+    def networks = creds.networkClient.getVirtualNetworksAll(creds)
 
-    List<CacheData> data = subnets.collect() { AzureSubnetDescription subnet ->
-      Map<String, Object> attributes = [ subnet: subnet]
-      new DefaultCacheData(Keys.getSubnetKey(azureCloudProvider, subnet.id, region, accountName),
-                           attributes,
-                           [:])
+    List<CacheData> data = networks.collect() { AzureVirtualNetworkDescription network ->
+      Map<String, Object> attributes = [ network: network]
+      new DefaultCacheData(Keys.getNetworkKey(azureCloudProvider, network.id, region, accountName),
+        attributes,
+        [:])
     }
 
     log.info("Caching ${data.size()} items in ${agentType}")
-    new DefaultCacheResult([(Keys.Namespace.SUBNETS.ns): data])
+    new DefaultCacheResult([(Keys.Namespace.NETWORKS.ns): data])
   }
 }

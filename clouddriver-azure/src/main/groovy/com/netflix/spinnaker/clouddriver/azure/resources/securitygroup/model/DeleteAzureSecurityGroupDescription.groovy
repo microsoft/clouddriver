@@ -4,4 +4,5 @@ import com.netflix.spinnaker.clouddriver.azure.resources.common.AzureResourceOps
 
 class DeleteAzureSecurityGroupDescription extends AzureResourceOpsDescription{
   String securityGroupName
+  List<String> regions
 }
