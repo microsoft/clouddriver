@@ -18,10 +18,19 @@ package com.netflix.spinnaker.clouddriver.azure.client
 
 import com.microsoft.azure.management.network.NetworkResourceProviderClient
 import com.microsoft.azure.management.network.NetworkResourceProviderService
+import com.microsoft.azure.management.network.models.AddressSpace
+import com.microsoft.azure.management.network.models.AzureAsyncOperationResponse
 import com.microsoft.azure.management.network.models.LoadBalancer
+import com.microsoft.azure.management.network.models.NetworkSecurityGroup
+import com.microsoft.azure.management.network.models.VirtualNetwork
 import com.microsoft.azure.utility.NetworkHelper
 import com.microsoft.windowsazure.core.OperationResponse
+import com.netflix.spinnaker.clouddriver.azure.common.AzureUtilities
+import com.netflix.spinnaker.clouddriver.azure.resources.network.model.AzureVirtualNetworkDescription
+import com.netflix.spinnaker.clouddriver.azure.resources.securitygroup.model.AzureSecurityGroupDescription
+import com.netflix.spinnaker.clouddriver.azure.resources.subnet.model.AzureSubnetDescription
 import com.netflix.spinnaker.clouddriver.azure.security.AzureCredentials
+import groovy.json.JsonBuilder
 import groovy.transform.CompileStatic
 
 @CompileStatic
@@ -30,38 +39,257 @@ class AzureNetworkClient extends AzureBaseClient {
     super(subscriptionId)
   }
 
+  /**
+   * Retrieve a collection of all load balancer for a give set of credentials, regardless of resource group/region
+   * @param creds the credentials to use when communicating to the Azure subscription(s)
+   * @return a Collection of objects which represent a Load Balancer in Azure
+   */
   Collection<LoadBalancer> getLoadBalancersAll(AzureCredentials creds) {
     this.getNetworkResourceProviderClient(creds).getLoadBalancersOperations().listAll().getLoadBalancers()
   }
 
+  /**
+   * Retrieve a collection of all load balancers within a given resource group
+   * @param creds the credentials to use when communicating to the Azure subscription(s)
+   * @param resourceGroupName name of the resource group where the load balancers were created
+   * @return a Collection of objects which represent a Load Balancer in Azure
+   */
   Collection<LoadBalancer> getLoadBalancersForResourceGroup(AzureCredentials creds, String resourceGroupName) {
     this.getNetworkResourceProviderClient(creds).getLoadBalancersOperations().list(resourceGroupName).getLoadBalancers()
   }
 
+  /**
+   * Retrieve the specified load balancer within a given azure credential, across all resource groups
+   * @param creds the credentials to use when communicating to the Azure subscription(s)
+   * @param loadBalancerName name of the load balancer in Azure
+   * @return an object which represents a Load Balancer in Azure
+   */
   LoadBalancer getLoadBalancer(AzureCredentials creds, String loadBalancerName) {
     findLoadBalancer(getLoadBalancersAll(creds), loadBalancerName)
   }
 
-  LoadBalancer getLoadBalancerInResourceGroup(AzureCredentials creds, String resourceGroupName, String loadBalanacerName) {
-    findLoadBalancer(getLoadBalancersForResourceGroup(creds, resourceGroupName), loadBalanacerName)
+  /**
+   * Retrieve the specified load balancer within a given resource group
+   * @param creds the credentials to use when communicating to the Azure subscription(s)
+   * @param resourceGroupName name of the resource group where the load balancer was created
+   * @param loadBalancerName name of the load balancer in Azure
+   * @return an object which represents a Load Balancer in Azure
+   */
+  LoadBalancer getLoadBalancerInResourceGroup(AzureCredentials creds, String resourceGroupName, String loadBalancerName) {
+    findLoadBalancer(getLoadBalancersForResourceGroup(creds, resourceGroupName), loadBalancerName)
   }
 
+  /**
+   * get the health state of a load balancer in Azure
+   * @param creds the credentials to use when communicating to the Azure subscription(s)
+   * @param loadBalancerName the name of the load balancer in Azure
+   * @return A String representation of the current state of the given load balancer
+   */
   String getLoadBalancerHealthState(AzureCredentials creds, String loadBalancerName) {
     getLoadBalancer(creds, loadBalancerName).getProvisioningState();
   }
 
+  /**
+   * Delete a load balancer in Azure
+   * @param creds the credentials to use when communicating to the Azure subscription(s)
+   * @param resourceGroupName name of the resource group where the load balancer was created (see application name and region/location)
+   * @param loadBalancerName name of the load balancer to delete
+   * @return an OperationResponse object
+   */
+  OperationResponse deleteLoadBalancer(AzureCredentials creds, String resourceGroupName, String loadBalancerName) {
+    // First delete the public Ip associated with the load balancer
+    def loadBalancer = getNetworkResourceProviderClient(creds).getLoadBalancersOperations().get(resourceGroupName, loadBalancerName).getLoadBalancer()
+
+    if (loadBalancer.frontendIpConfigurations.size() != 1) {
+      throw new RuntimeException("Unexpected number of public IP addresses associated with the load balancer (should be only one)!")
+    }
+
+    def publicIpAddressName = AzureUtilities.getResourceNameFromID(loadBalancer.frontendIpConfigurations.first().getPublicIpAddress().id)
+    this.getNetworkResourceProviderClient(creds).getLoadBalancersOperations().delete(resourceGroupName, loadBalancerName)
+
+    this.getNetworkResourceProviderClient(creds).getPublicIpAddressesOperations().delete(resourceGroupName, publicIpAddressName)
+  }
+
+  /**
+   * Delete a network security group in Azure
+   * @param creds the credentials to use when communicating to the Azure subscription(s)
+   * @param resourceGroupName name of the resource group where the load balancer was created (see application name and region/location)
+   * @param securityGroupName name of the Azure network security group to delete
+   * @return an OperationResponse object
+   */
+  OperationResponse deleteSecurityGroup(AzureCredentials creds, String resourceGroupName, String securityGroupName) {
+    def securityGroup = getNetworkResourceProviderClient(creds).getNetworkSecurityGroupsOperations().get(resourceGroupName, securityGroupName).getNetworkSecurityGroup()
+
+    this.getNetworkResourceProviderClient(creds).getNetworkSecurityGroupsOperations().delete(resourceGroupName, securityGroupName)
+  }
+
+  /**
+   *
+   * @param creds the credentials to use when communicating to the Azure subscription(s)
+   * @param resourceGroupName name of the resource group where the load balancer was created
+   * @param virtualNetworkName name of the virtual network to create
+   * @param region region to create the resource in
+   */
+  void createVirtualNetwork(AzureCredentials creds, String resourceGroupName, String virtualNetworkName, String region, String addressPrefix = "10.0.0.0/16") {
+    try {
+
+      def virtualNetwork = new VirtualNetwork(region)
+      AddressSpace addressSpace = new AddressSpace()
+      addressSpace.addressPrefixes.add(addressPrefix)
+      virtualNetwork.setAddressSpace(addressSpace)
+
+      //Create the virtual network for the resource group
+      AzureAsyncOperationResponse response = this.getNetworkResourceProviderClient(creds).
+        getVirtualNetworksOperations().
+        createOrUpdate(resourceGroupName, virtualNetworkName, virtualNetwork)
+    }
+    catch (e) {
+      throw new RuntimeException("Unable to create Virtual network ${virtualNetworkName} in Resource Group ${resourceGroupName}", e)
+    }
+  }
+
+  /**
+   * Retrieve a collection of all network security groups for a give set of credentials, regardless of resource group/region
+   * @param creds the credentials to use when communicating to the Azure subscription(s)
+   * @return a Collection of objects which represent a Network Security Group in Azure
+   */
+  Collection<AzureSecurityGroupDescription> getNetworkSecurityGroupsAll(AzureCredentials creds) {
+    def result = new ArrayList<AzureSecurityGroupDescription>()
+
+    this.getNetworkResourceProviderClient(creds).getNetworkSecurityGroupsOperations().listAll().networkSecurityGroups.each { item ->
+      def sgItem = new AzureSecurityGroupDescription()
+
+      sgItem.name = item.name
+      sgItem.location = item.location
+      sgItem.region = item.location
+      sgItem.cloudProvider = "azure"
+      sgItem.provisioningState = item.provisioningState
+      sgItem.resourceGuid = item.resourceGuid
+      sgItem.etag = item.etag
+      sgItem.id = item.id
+      sgItem.tags = item.tags
+      sgItem.type = item.type
+      // TODO: populate rules and subnet member lists
+      // sgItem.defaultSecurityRules += item.defaultSecurityRules
+      // sgItem.securityRules += item.securityRules
+      // sgItem.subnets += item.subnets
+      def networkInterfaces = new ArrayList<String>()
+      item.networkInterfaces?.each {networkInterfaces += it.id}
+      sgItem.networkInterfaces = networkInterfaces
+
+      result += sgItem
+    }
+
+    result
+  }
+
+  /**
+   * Retrieve a collection of subnet description objects for a given Azure VirtualNetwork object
+   * @param vnet the Azure VirtualNetwork
+   * @return a Collection of AzureSubnetDescription objects which represent a Subnet in Azure
+   */
+  Collection<AzureSubnetDescription> getSubnetForVirtualNetwork(VirtualNetwork vnet) {
+    def result = new ArrayList<AzureSubnetDescription>()
+
+    vnet.subnets?.each { itemSubnet ->
+      def subnetItem = new AzureSubnetDescription()
+      subnetItem.name = itemSubnet.name
+      subnetItem.region = vnet.location
+      subnetItem.cloudProvider = "azure"
+      subnetItem.provisioningState = itemSubnet.provisioningState
+      subnetItem.etag = itemSubnet.etag
+      subnetItem.id = itemSubnet.id
+      subnetItem.addressPrefix = itemSubnet.addressPrefix
+      //subnetItem.ipConfigurations = itemSubnet.ipConfigurations
+      subnetItem.networkSecurityGroup = itemSubnet.networkSecurityGroup?.id
+      subnetItem.routeTable = itemSubnet.routeTable?.id
+      result += subnetItem
+    }
+
+    result
+  }
+
+  /**
+   * Retrieve a collection of all subnets for a give set of credentials, regardless of resource group/region
+   * @param creds the credentials to use when communicating to the Azure subscription(s)
+   * @return a Collection of objects which represent a Subnet in Azure
+   */
+  Collection<AzureSubnetDescription> getSubnetsAll(AzureCredentials creds) {
+    def result = new ArrayList<AzureSubnetDescription>()
+
+    this.getNetworkResourceProviderClient(creds).getVirtualNetworksOperations().listAll().virtualNetworks.each { item->
+      getSubnetForVirtualNetwork(item).each {AzureSubnetDescription subnet -> result += subnet }
+    }
+
+    result
+  }
+
+  /**
+   * Retrieve a collection of all virtual networks for a give set of credentials, regardless of resource group/region
+   * @param creds the credentials to use when communicating to the Azure subscription(s)
+   * @return a Collection of objects which represent a Virtual Network in Azure
+   */
+  Collection<AzureVirtualNetworkDescription> getVirtualNetworksAll(AzureCredentials creds) {
+    def result = new ArrayList<AzureVirtualNetworkDescription>()
+
+    this.getNetworkResourceProviderClient(creds).getVirtualNetworksOperations().listAll().virtualNetworks.each { item ->
+      def vnetItem = new AzureVirtualNetworkDescription()
+      def subnets = getSubnetForVirtualNetwork(item)
+
+      vnetItem.name = item.name
+      vnetItem.location = item.location
+      vnetItem.region = item.location
+      vnetItem.addressSpace = item.addressSpace?.addressPrefixes
+      vnetItem.dhcpOptions = item.dhcpOptions?.dnsServers
+      vnetItem.provisioningState = item.provisioningState
+      vnetItem.resourceGuid = item.resourceGuid
+      vnetItem.subnets = subnets.toList()
+      vnetItem.etag = item.etag
+      vnetItem.id = item.id
+      vnetItem.tags = item.tags
+      vnetItem.type = item.type
+      result += vnetItem
+    }
+
+    result
+  }
+
+  /**
+   * get the dns name associated with a load balancer in Azure
+   * @param creds the credentials to use when communicating to the Azure subscription(s)
+   * @param resourceGroupName name of the resource group where the load balancer was created (see application name and region/location)
+   * @param loadBalancerName the name of the load balancer in Azure
+   * @return the dns name of the given load balancer
+   */
+  String getDnsNameForLoadBalancer(AzureCredentials creds, String resourceGroupName, String loadBalancerName) {
+    def loadBalancer = this.getNetworkResourceProviderClient(creds).getLoadBalancersOperations().get(resourceGroupName, loadBalancerName).getLoadBalancer()
+    if (loadBalancer.frontendIpConfigurations.size() != 1) {
+      throw new RuntimeException("Unexpected number of public IP addresses associated with the load balancer (should be only one)!")
+    }
+
+    def publicIpResource = loadBalancer.frontendIpConfigurations.first().getPublicIpAddress().id
+    def publicIp = this.getNetworkResourceProviderClient(creds).getPublicIpAddressesOperations().get(resourceGroupName, AzureUtilities.getNameFromResourceId(publicIpResource)).publicIpAddress
+
+    publicIp.dnsSettings.fqdn
+  }
+
+  /**
+   * get the NetworkResourceProviderClient which will be used for all interaction related to network resources in Azure
+   * @param creds the credentials to use when communicating to the Azure subscription(s)
+   * @return an instance of the Azure NetworkResourceProviderClient
+   */
   protected NetworkResourceProviderClient getNetworkResourceProviderClient(AzureCredentials creds) {
     NetworkResourceProviderService.create(this.buildConfiguration(creds))
   }
 
+  /**
+   * Find the load balancer by name
+   * @param loadBalancers collection of load balancers to search in
+   * @param loadBalancerName name of the load balancer to search for
+   * @return an object which represents a load balancer in Azure
+   */
   private static LoadBalancer findLoadBalancer(Collection<LoadBalancer> loadBalancers, String loadBalancerName) {
     loadBalancers.find { it.name == loadBalancerName }
-  }
-
-  OperationResponse deleteLoadBalancer(AzureCredentials creds, String appName, String loadBalancerName, String region) {
-    String resourceGroupName = appName // TODO region will be capture as part of the Azure resource group name
-
-    this.getNetworkResourceProviderClient(creds).getLoadBalancersOperations().delete(resourceGroupName, loadBalancerName)
   }
 
 }
