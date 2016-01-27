@@ -24,10 +24,10 @@ class AzureServerGroupDescription extends AzureResourceOpsDescription {
   }
 
   UpgradePolicy upgradePolicy
-  AzureImageReference imageReference
+  AzureImage image
   String provisioningState
 
-  static class AzureImageReference {
+  static class AzureImage {
     String publisher
     String offer
     String sku
