@@ -25,6 +25,8 @@ class AzureServerGroupDescription extends AzureResourceOpsDescription {
 
   UpgradePolicy upgradePolicy
   AzureImage image
+  AzureScaleSetSku sku
+  AzureOperatingSystemConfig osConfig
   String provisioningState
 
   static class AzureImage {
@@ -34,13 +36,21 @@ class AzureServerGroupDescription extends AzureResourceOpsDescription {
     String version
   }
 
+  static class AzureScaleSetSku {
+    String name
+    String tier
+    Long capacity
+  }
+
+  static class AzureOperatingSystemConfig {
+    String adminUserName
+    String adminPassword
+  }
+
   /*
    * TODO Still need to add in (or triage out) references to the following:
    *  ! LoadBalancers
    *  ! SecurityGroups
-   *  ! VM size (# of cores, RAM, etc.)
-   *  ! InstanceCount
-   *
    *  - health threshold
    *  - avail zone
    *  + advanced
