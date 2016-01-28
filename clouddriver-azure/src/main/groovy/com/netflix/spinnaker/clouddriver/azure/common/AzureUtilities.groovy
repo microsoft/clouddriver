@@ -28,6 +28,7 @@ class AzureUtilities {
   static final String LBFRONTEND_NAME_PREFIX = "fe-"
   static final String DNS_NAME_PREFIX = "dns-"
   static final String IPCONFIG_NAME_PREFIX = "ipc-"
+  static final String NETWORK_INTERFACE_PREFIX = "nic-"
 
   static String getResourceNameFromID(String resourceId) {
     int idx = resourceId.lastIndexOf(PATH_SEPARATOR)

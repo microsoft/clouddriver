@@ -47,6 +47,14 @@ class AzureServerGroupDescription extends AzureResourceOpsDescription {
     String adminPassword
   }
 
+  Integer getStorageAccountCount() {
+    (sku.capacity / 20) + 1
+  }
+
+  String getIdenifier() {
+    String.format("%s-%s-%s", appName, stack, detail)
+  }
+
   /*
    * TODO Still need to add in (or triage out) references to the following:
    *  ! LoadBalancers
