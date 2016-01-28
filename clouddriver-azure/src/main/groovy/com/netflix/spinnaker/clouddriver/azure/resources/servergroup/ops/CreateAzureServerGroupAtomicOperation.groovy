@@ -20,7 +20,7 @@ import com.microsoft.azure.management.resources.models.DeploymentExtended
 import com.microsoft.azure.management.resources.models.DeploymentOperation
 import com.netflix.spinnaker.clouddriver.azure.client.AzureResourceManagerClient
 import com.netflix.spinnaker.clouddriver.azure.common.AzureUtilities
-import com.netflix.spinnaker.clouddriver.azure.resources.servergroup.model.CreateAzureServerGroupDescription
+import com.netflix.spinnaker.clouddriver.azure.resources.servergroup.model.AzureServerGroupDescription
 import com.netflix.spinnaker.clouddriver.data.task.Task
 import com.netflix.spinnaker.clouddriver.data.task.TaskRepository
 import com.netflix.spinnaker.clouddriver.orchestration.AtomicOperation
@@ -32,9 +32,9 @@ class CreateAzureServerGroupAtomicOperation implements AtomicOperation<Map> {
     TaskRepository.threadLocalTask.get()
   }
 
-  private final CreateAzureServerGroupDescription description
+  private final AzureServerGroupDescription description
 
-  CreateAzureServerGroupAtomicOperation(CreateAzureServerGroupDescription description) {
+  CreateAzureServerGroupAtomicOperation(AzureServerGroupDescription description) {
     this.description = description
   }
 

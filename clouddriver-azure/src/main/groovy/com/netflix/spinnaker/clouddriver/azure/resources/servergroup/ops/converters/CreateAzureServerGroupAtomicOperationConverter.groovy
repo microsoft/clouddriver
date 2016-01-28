@@ -18,7 +18,7 @@ package com.netflix.spinnaker.clouddriver.azure.resources.servergroup.ops.conver
 
 import com.netflix.spinnaker.clouddriver.azure.AzureOperation
 import com.netflix.spinnaker.clouddriver.azure.common.AzureAtomicOperationConverterHelper
-import com.netflix.spinnaker.clouddriver.azure.resources.servergroup.model.CreateAzureServerGroupDescription
+import com.netflix.spinnaker.clouddriver.azure.resources.servergroup.model.AzureServerGroupDescription
 import com.netflix.spinnaker.clouddriver.azure.resources.servergroup.ops.CreateAzureServerGroupAtomicOperation
 import com.netflix.spinnaker.clouddriver.orchestration.AtomicOperation
 import com.netflix.spinnaker.clouddriver.orchestration.AtomicOperations
@@ -28,14 +28,14 @@ import org.springframework.stereotype.Component
 
 @Slf4j
 @AzureOperation(AtomicOperations.CREATE_SERVER_GROUP)
-@Component("createAzureServerGroupDescription")
+@Component("azureServerGroupDescription")
 class CreateAzureServerGroupAtomicOperationConverter extends AbstractAtomicOperationsCredentialsSupport {
 
   AtomicOperation convertOperation(Map input) {
     new CreateAzureServerGroupAtomicOperation(convertDescription(input))
   }
 
-  CreateAzureServerGroupDescription convertDescription(Map input) {
-    AzureAtomicOperationConverterHelper.convertDescription(input, this, CreateAzureServerGroupDescription)
+  AzureServerGroupDescription convertDescription(Map input) {
+    AzureAtomicOperationConverterHelper.convertDescription(input, this, AzureServerGroupDescription)
   }
 }
