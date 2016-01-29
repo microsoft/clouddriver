@@ -22,10 +22,6 @@ import com.netflix.spinnaker.clouddriver.azure.resources.servergroup.model.Azure
 
 class AzureServerGroupResourceTemplate {
 
-  private static String uniqueStorageNamesArrayVar
-  private static String newStorageAccountsSuffixVar
-  private static String vhdContainerNameVar
-
   protected static ObjectMapper mapper = new ObjectMapper().configure(SerializationFeature.INDENT_OUTPUT, true)
 
   /**
@@ -68,6 +64,15 @@ class AzureServerGroupResourceTemplate {
    *
    */
   static class ServerGroupTemplateVariables {
+    // The values of these variables need to match the name of the corresponding variables below
+    // The reason is that in other sections of the RM template (i.e., Resources) their is a reference by name
+    // to the variable defined in Variables section of the template.
+    // These *Var variables are meant to help keep that reference from breaking IF the name of the actual variable
+    // changes
+    static transient String uniqueStorageNamesArrayVar = 'uniqueStorageNameArray'
+    static transient String newStorageAccountsSuffixVar = 'newStorageAccountSuffix'
+    static transient String vhdContainerNameVar = 'vhdContainerName'
+
     String newStorageAccountSuffix
     String vhdContainerName
     OsType osType
@@ -86,12 +91,12 @@ class AzureServerGroupResourceTemplate {
       imageReference = "[variables('osType')]"
 
       // for later use
-      uniqueStorageNamesArrayVar = uniqueStorageNameArray.class.name
-      vhdContainerNameVar = vhdContainerName.class.name
-      newStorageAccountsSuffixVar = newStorageAccountSuffix.class.name
+      //uniqueStorageNamesArrayVar = uniqueStorageNameArray.class.name
+      //vhdContainerNameVar = vhdContainerName.class.name
+      //newStorageAccountsSuffixVar = newStorageAccountSuffix.class.name
 
       for (int i = 0; i < description.getStorageAccountCount(); i++) {
-        String uniqueName = String.format("[concast(uniqueString(concat(resourceGroup().id, variables('%s'), '%s')))]", newStorageAccountsSuffixVar, i)
+        String uniqueName = String.format("[concat(uniqueString(concat(resourceGroup().id, variables('%s'), '%s')))]", newStorageAccountsSuffixVar, i)
         uniqueStorageNameArray.add(uniqueName)
       }
     }
@@ -107,7 +112,7 @@ class AzureServerGroupResourceTemplate {
 
   static class SubnetParameter {
     String type = "string"
-    Map<String, String> metadata = ["description":"ID for subnet to be used by scale set"]
+    Map<String, String> metadata = ["description":"Subnet Resource ID"]
   }
   /**
    *
@@ -151,8 +156,10 @@ class AzureServerGroupResourceTemplate {
      * @param description
      */
     StorageAccount(AzureServerGroupDescription description) {
-      apiVersion = "2015-06-015"
-      name = String.format("[concat(variables('%s')[copyIndex()], variables('%s'))]", uniqueStorageNamesArrayVar, newStorageAccountsSuffixVar)
+      apiVersion = "2015-06-15"
+      name = String.format("[concat(variables('%s')[copyIndex()], variables('%s'))]",
+        ServerGroupTemplateVariables.uniqueStorageNamesArrayVar,
+        ServerGroupTemplateVariables.newStorageAccountsSuffixVar)
       type = "Microsoft.Storage/storageAccounts"
       location = "[parameters('location')]"
 
@@ -210,7 +217,7 @@ class AzureServerGroupResourceTemplate {
      * @param description
      */
     VirtualMachineScaleSet(AzureServerGroupDescription description) {
-      apiVersion = "2015-06-015"
+      apiVersion = "2015-06-15"
       name = description.getIdenifier()
       type = "Microsoft.Compute/virtualMachineScaleSets"
       location = "[parameters('location')]"
@@ -219,9 +226,9 @@ class AzureServerGroupResourceTemplate {
       description.getStorageAccountCount().times{ idx ->
         this.dependsOn.add(
           String.format("[concat('Microsoft.Storage/storageAccounts/', variables('%s')[%s], variables('%s'))]",
-            uniqueStorageNamesArrayVar,
+            ServerGroupTemplateVariables.uniqueStorageNamesArrayVar,
             idx,
-            newStorageAccountsSuffixVar)
+            ServerGroupTemplateVariables.newStorageAccountsSuffixVar)
         )
       }
 
@@ -234,7 +241,7 @@ class AzureServerGroupResourceTemplate {
   }
 
   static class VirtualMachineScaleSetProperty {
-    Map<String, String> upgradePolicy = []
+    Map<String, String> upgradePolicy = [:]
 
     VirtualMachineScaleSetProperty(AzureServerGroupDescription description) {
       upgradePolicy["mode"] = description.upgradePolicy.toString()
@@ -264,8 +271,8 @@ class AzureServerGroupResourceTemplate {
   // ***OSProfile
   static class ScaleSetOsProfileProperty {
     String computerNamePrefix
-    String userName
-    String password
+    String adminUserName
+    String adminPassword
 
     /**
      *
@@ -273,8 +280,8 @@ class AzureServerGroupResourceTemplate {
      */
     ScaleSetOsProfileProperty(AzureServerGroupDescription description) {
       computerNamePrefix = description.getIdenifier()
-      userName = description.osConfig.adminUserName
-      password = description.osConfig.adminPassword
+      adminUserName = description.osConfig.adminUserName
+      adminPassword = description.osConfig.adminPassword
     }
   }
 
@@ -315,7 +322,7 @@ class AzureServerGroupResourceTemplate {
    *
    */
   static class NetworkInterfaceConfigurationProperty {
-    Boolean primary
+    String primary
     ArrayList<NetworkInterfaceIPConfiguration> ipConfigurations = []
 
     /**
@@ -323,7 +330,7 @@ class AzureServerGroupResourceTemplate {
      * @param description
      */
     NetworkInterfaceConfigurationProperty(AzureServerGroupDescription description) {
-      primary = true
+      primary = "true"
       ipConfigurations.add(new NetworkInterfaceIPConfiguration(description))
     }
   }
@@ -366,7 +373,7 @@ class AzureServerGroupResourceTemplate {
   static class NetworkInterfaceIPConfigurationSubnet {
     String id
     NetworkInterfaceIPConfigurationSubnet(AzureServerGroupDescription description) {
-      id = "[parameters('subnetID')]"
+      id = "[parameters('subnetId')]"
     }
   }
 
@@ -411,10 +418,10 @@ class AzureServerGroupResourceTemplate {
       createOption = "FromImage"
       description.getStorageAccountCount().times { idx ->
         vhdContainers.add(String.format("[concat('https://', variables('%s')[%s], variables('%s'), '.blob.core.windows.net/', variables('%s'))]",
-          uniqueStorageNamesArrayVar,
+          ServerGroupTemplateVariables.uniqueStorageNamesArrayVar,
           idx,
-          newStorageAccountsSuffixVar,
-          vhdContainerNameVar))
+          ServerGroupTemplateVariables.newStorageAccountsSuffixVar,
+          ServerGroupTemplateVariables.vhdContainerNameVar))
       }
     }
   }
