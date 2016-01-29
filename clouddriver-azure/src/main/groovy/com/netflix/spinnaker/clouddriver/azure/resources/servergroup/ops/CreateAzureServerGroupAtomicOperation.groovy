@@ -21,6 +21,7 @@ import com.microsoft.azure.management.resources.models.DeploymentOperation
 import com.netflix.spinnaker.clouddriver.azure.client.AzureResourceManagerClient
 import com.netflix.spinnaker.clouddriver.azure.common.AzureUtilities
 import com.netflix.spinnaker.clouddriver.azure.resources.servergroup.model.AzureServerGroupDescription
+import com.netflix.spinnaker.clouddriver.azure.templates.AzureServerGroupResourceTemplate
 import com.netflix.spinnaker.clouddriver.data.task.Task
 import com.netflix.spinnaker.clouddriver.data.task.TaskRepository
 import com.netflix.spinnaker.clouddriver.orchestration.AtomicOperation
@@ -57,8 +58,7 @@ class CreateAzureServerGroupAtomicOperation implements AtomicOperation<Map> {
 
       String resourceGroupName = AzureUtilities.getResourceGroupName(description.appName, description.region)
       DeploymentExtended deployment = description.credentials.resourceManagerClient.createResourceFromTemplate(description.credentials,
-        // TODO - when AzureServerGroupResourceTemplate is ready, pass in a real template here
-        "", // AzureServerGroupResourceTemplate.getTemplate(description),
+        AzureServerGroupResourceTemplate.getTemplate(description),
         resourceGroupName,
         description.region,
         description.name)
