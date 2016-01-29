@@ -18,7 +18,6 @@ package com.netflix.spinnaker.clouddriver.azure.templates
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.netflix.spinnaker.clouddriver.azure.common.AzureUtilities
-import com.netflix.spinnaker.clouddriver.azure.resources.common.AzureResourceOpsDescription
 import com.netflix.spinnaker.clouddriver.azure.resources.servergroup.model.AzureServerGroupDescription
 
 class AzureServerGroupResourceTemplate {
@@ -30,9 +29,10 @@ class AzureServerGroupResourceTemplate {
   protected static ObjectMapper mapper = new ObjectMapper().configure(SerializationFeature.INDENT_OUTPUT, true)
 
   /**
-   *
-   * @param description
-   * @return
+   * Build the resource manager template that will create the Azure equivalent (VM Scale Set)
+   * of the Spinnaker Server Group
+   * @param description - Description object containing the values to be specified in the template
+   * @return - JSON string representing the Resource Manager template for a Azure VM Scale Set (Server Group)
    */
   static String getTemplate(AzureServerGroupDescription description) {
     ServerGroupTemplate template = new ServerGroupTemplate(description)
@@ -199,6 +199,7 @@ class AzureServerGroupResourceTemplate {
    *
    */
   static class VirtualMachineScaleSet extends DependingResource {
+    VirtualMachineScaleSetProperty properties
     ScaleSetSkuProperty sku
     ScaleSetVMProfileProperty virtualMachineProfile
     ScaleSetOsProfileProperty osProfile
@@ -224,10 +225,19 @@ class AzureServerGroupResourceTemplate {
         )
       }
 
+      properties = new VirtualMachineScaleSetProperty(description)
       sku = new ScaleSetSkuProperty(description)
       virtualMachineProfile = new ScaleSetVMProfileProperty(description)
       osProfile = new ScaleSetOsProfileProperty(description)
       networkProfile = new ScaleSetNetworkProfileProperty(description)
+    }
+  }
+
+  static class VirtualMachineScaleSetProperty {
+    Map<String, String> upgradePolicy = []
+
+    VirtualMachineScaleSetProperty(AzureServerGroupDescription description) {
+      upgradePolicy["mode"] = description.upgradePolicy.toString()
     }
   }
 
