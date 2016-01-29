@@ -80,15 +80,15 @@ class AzureServerGroupResourceTemplate {
      */
     ServerGroupTemplateVariables(AzureServerGroupDescription description) {
 
-      // for later use
-      uniqueStorageNamesArrayVar = uniqueStorageNameArray.class.name
-      vhdContainerNameVar = vhdContainerName.class.name
-      newStorageAccountsSuffixVar = newStorageAccountSuffix.class.name
-
       newStorageAccountSuffix = "sa"
       vhdContainerName = description.getIdenifier()
       osType = new OsType(description)
       imageReference = "[variables('osType')]"
+
+      // for later use
+      uniqueStorageNamesArrayVar = uniqueStorageNameArray.class.name
+      vhdContainerNameVar = vhdContainerName.class.name
+      newStorageAccountsSuffixVar = newStorageAccountSuffix.class.name
 
       for (int i = 0; i < description.getStorageAccountCount(); i++) {
         String uniqueName = String.format("[concast(uniqueString(concat(resourceGroup().id, variables('%s'), '%s')))]", newStorageAccountsSuffixVar, i)
