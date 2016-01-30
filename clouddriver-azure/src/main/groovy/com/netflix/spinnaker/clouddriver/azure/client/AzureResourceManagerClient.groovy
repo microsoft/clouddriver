@@ -56,7 +56,8 @@ class AzureResourceManagerClient extends AzureBaseClient {
                                                 String template,
                                                 String resourceGroupName,
                                                 String region,
-                                                String resourceName) {
+                                                String resourceName,
+                                                Map<String, String> templateParams = [:]) {
 
     if (!resourceGroupExists(credentials, resourceGroupName)) {
       createResourceGroup(credentials, resourceGroupName, region)
@@ -64,7 +65,9 @@ class AzureResourceManagerClient extends AzureBaseClient {
     }
 
     String deploymentName = resourceName + AzureUtilities.NAME_SEPARATOR +"deployment"
-    def templateParams = [location : region]
+    if (!templateParams['location']) {
+      templateParams['location'] = region
+    }
 
     DeploymentExtended deployment = createTemplateDeployment(this.getResourceManagementClient(credentials),
       resourceGroupName,
