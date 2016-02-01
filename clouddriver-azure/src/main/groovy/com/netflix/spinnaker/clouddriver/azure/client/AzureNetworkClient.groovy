@@ -166,8 +166,8 @@ class AzureNetworkClient extends AzureBaseClient {
         subnetItem.id = itemSubnet.id
         subnetItem.addressPrefix = itemSubnet.addressPrefix
         //subnetItem.ipConfigurations = itemSubnet.ipConfigurations
-        subnetItem.networkSecurityGroup = itemSubnet.networkSecurityGroup.id
-        subnetItem.routeTable = itemSubnet.routeTable.id
+        subnetItem.networkSecurityGroup = itemSubnet.networkSecurityGroup?.id
+        subnetItem.routeTable = itemSubnet.routeTable?.id
         result += subnetItem
       }
     }
