@@ -138,7 +138,7 @@ class AzureNetworkClient extends AzureBaseClient {
       def subnet = new Subnet(addressPrefix)
       AzureAsyncOperationResponse response = this.getNetworkResourceProviderClient(creds).
         getSubnetsOperations().
-        createOrUpdate(resourceGroupName, virtualNetworkName, subnet.name, subnet)
+        createOrUpdate(resourceGroupName, virtualNetworkName, subnetName, subnet)
       // TODO can we return the ID of the resulting subnet somehow?
     }
     catch (e) {
