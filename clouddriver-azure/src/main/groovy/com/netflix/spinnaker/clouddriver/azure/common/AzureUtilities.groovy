@@ -55,7 +55,8 @@ class AzureUtilities {
   }
 
   static String getSubnetName(String virtualNetworkName, String addressPrefix) {
-    virtualNetworkName + NAME_SEPARATOR + SUBNET_NAME_PREFIX + addressPrefix
+    String addressPrefixSanitized = addressPrefix.replaceAll('[\\./]', '_')
+    virtualNetworkName + NAME_SEPARATOR + SUBNET_NAME_PREFIX + addressPrefixSanitized
   }
 
   static String getResourceGroupName(String appName, String region) {
