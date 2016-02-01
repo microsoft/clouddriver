@@ -186,18 +186,18 @@ class AzureNetworkClient extends AzureBaseClient {
 
     def result = new ArrayList<AzureSubnetDescription>()
 
-    for (VirtualNetwork item : list) {
-      for (com.microsoft.azure.management.network.models.Subnet itemSubnet : item.subnets) {
+    list.each { vnet ->
+      vnet.subnets.each { subnet ->
         def subnetItem = new AzureSubnetDescription()
-        subnetItem.name = itemSubnet.name
-        subnetItem.region = item.location
-        subnetItem.provisioningState = itemSubnet.provisioningState
-        subnetItem.etag = itemSubnet.etag
-        subnetItem.id = itemSubnet.id
-        subnetItem.addressPrefix = itemSubnet.addressPrefix
-        //subnetItem.ipConfigurations = itemSubnet.ipConfigurations
-        subnetItem.networkSecurityGroup = itemSubnet.networkSecurityGroup?.id
-        subnetItem.routeTable = itemSubnet.routeTable?.id
+        subnetItem.name = subnet.name
+        subnetItem.region = vnet.location
+        subnetItem.provisioningState = subnet.provisioningState
+        subnetItem.etag = subnet.etag
+        subnetItem.id = subnet.id
+        subnetItem.addressPrefix = subnet.addressPrefix
+        //subnetItem.ipConfigurations = subnet.ipConfigurations
+        subnetItem.networkSecurityGroup = subnet.networkSecurityGroup?.id
+        subnetItem.routeTable = subnet.routeTable?.id
         result += subnetItem
       }
     }
