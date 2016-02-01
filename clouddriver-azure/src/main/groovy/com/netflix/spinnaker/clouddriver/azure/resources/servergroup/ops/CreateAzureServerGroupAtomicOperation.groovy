@@ -91,7 +91,7 @@ class CreateAzureServerGroupAtomicOperation implements AtomicOperation<Map> {
         resourceGroupName,
         description.region,
         description.name,
-        [subnet: subnetId])
+        [subnetId: subnetId])
 
       String deploymentState = deployment.properties.provisioningState
 
