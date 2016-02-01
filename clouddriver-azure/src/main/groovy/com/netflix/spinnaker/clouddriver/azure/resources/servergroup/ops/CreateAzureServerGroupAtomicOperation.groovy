@@ -57,14 +57,42 @@ class CreateAzureServerGroupAtomicOperation implements AtomicOperation<Map> {
       task.updateStatus(BASE_PHASE, "Beginning server group deployment")
 
       String resourceGroupName = AzureUtilities.getResourceGroupName(description.appName, description.region)
+      String virtualNetworkName = AzureUtilities.getVirtualNetworkName(resourceGroupName)
 
       description.credentials.resourceManagerClient.initializeResourceGroupAndVNet(description.credentials, resourceGroupName, description.region)
 
+      // TODO We just try to grab the next subnet, which fails if the largest possible subnet is already taken.
+      // TODO We also just assume that a vnet can only have one address range.
+      task.updateStatus(BASE_PHASE, "Creating subnet for server group")
+      def vnet = description.credentials.networkClient.getVirtualNetwork(description.credentials,
+        resourceGroupName,
+        virtualNetworkName)
+      if (vnet.addressSpace.addressPrefixes.size() != 1) {
+        throw new RuntimeException(
+          "Virtual Network found with ${vnet.addressSpace.addressPrefixes.size()} address spaces; expected: 1")
+      }
+      String vnetPrefix = vnet.addressSpace.addressPrefixes[0]
+      String subnetPrefix = null
+      def subnets = description.credentials.networkClient.getSubnetsInVirtualNetwork(description.credentials, resourceGroupName, vnetPrefix)
+      if (subnets.size() > 0) {
+        subnetPrefix = subnets.max({ a, b -> AzureUtilities.compareIpv4AddrPrefixes(a.addressPrefix, b.addressPrefix) }).addressPrefix
+      }
+      String nextSubnet = AzureUtilities.getNextSubnet(vnetPrefix, subnetPrefix)
+      String subnetName = AzureUtilities.getSubnetName(virtualNetworkName, nextSubnet)
+      description.credentials.networkClient.createSubnet(description.credentials,
+        resourceGroupName,
+        virtualNetworkName,
+        subnetName,
+        nextSubnet)
+      String subnetId = description.credentials.networkClient.getSubnet(description.credentials, resourceGroupName, subnetName)
+
+      task.updateStatus(BASE_PHASE, "Deploying server group")
       DeploymentExtended deployment = description.credentials.resourceManagerClient.createResourceFromTemplate(description.credentials,
         AzureServerGroupResourceTemplate.getTemplate(description),
         resourceGroupName,
         description.region,
-        description.name)
+        description.name,
+        [subnet: subnetId])
 
       String deploymentState = deployment.properties.provisioningState
 

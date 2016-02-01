@@ -21,6 +21,7 @@ import com.microsoft.azure.management.network.NetworkResourceProviderService
 import com.microsoft.azure.management.network.models.AddressSpace
 import com.microsoft.azure.management.network.models.AzureAsyncOperationResponse
 import com.microsoft.azure.management.network.models.LoadBalancer
+import com.microsoft.azure.management.network.models.Subnet
 import com.microsoft.azure.management.network.models.VirtualNetwork
 import com.microsoft.azure.utility.NetworkHelper
 import com.microsoft.windowsazure.core.OperationResponse
@@ -132,6 +133,19 @@ class AzureNetworkClient extends AzureBaseClient {
     }
   }
 
+  void createSubnet(AzureCredentials creds, String resourceGroupName, String virtualNetworkName, String subnetName, String addressPrefix = '10.0.0.0/24') {
+    try {
+      def subnet = new Subnet(addressPrefix)
+      AzureAsyncOperationResponse response = this.getNetworkResourceProviderClient(creds).
+        getSubnetsOperations().
+        createOrUpdate(resourceGroupName, virtualNetworkName, subnet.name, subnet)
+      // TODO can we return the ID of the resulting subnet somehow?
+    }
+    catch (e) {
+      throw new RuntimeException("Unable to create subnet ${subnetName} in Resource Group ${resourceGroupName}", e)
+    }
+  }
+
   /**
    * Gets a virtual network object instance by name, or null if the virtual network does not exist
    * @param creds the credentials to use when communicating with Azure subscription(s)
@@ -152,7 +166,29 @@ class AzureNetworkClient extends AzureBaseClient {
    * @return a Collection of objects which represent a Subnet in Azure
    */
   Collection<AzureSubnetDescription> getSubnetsAll(AzureCredentials creds) {
-    def list = this.getNetworkResourceProviderClient(creds).getVirtualNetworksOperations().listAll().virtualNetworks
+    this.getSubnets(creds, null)
+  }
+
+  Collection<AzureSubnetDescription> getSubnetsInVirtualNetwork(AzureCredentials creds, String resourceGroupName, String virtualNetworkAddressPrefix) {
+    this.getSubnets(creds, resourceGroupName).findAll {
+      0 == AzureUtilities.compareIpv4AddrPrefixes(virtualNetworkAddressPrefix, it.addressPrefix)
+    }
+  }
+
+  /**
+   * Retrieve a collection of all subnets for a give set of credentials, regardless of region, optionally
+   * filtered for a given resource group
+   * @param creds the credentials to use when communicating to the Azure subscription(s)
+   * @param resourceGroupName specify the resource group that is used to filter subnets; only
+   *
+   * @return a Collection of objects which represent a Subnet in Azure
+   */
+  Collection<AzureSubnetDescription> getSubnets(AzureCredentials creds, String resourceGroupName = null) {
+    def vnetOps = this.getNetworkResourceProviderClient(creds).getVirtualNetworksOperations()
+
+    def list = resourceGroupName ?
+      vnetOps.list(resourceGroupName).virtualNetworks :
+      vnetOps.listAll().virtualNetworks
 
     def result = new ArrayList<AzureSubnetDescription>()
 
@@ -173,6 +209,17 @@ class AzureNetworkClient extends AzureBaseClient {
     }
 
     result
+  }
+
+  /**
+   * Retrieves a particular subnet from a given resource group based on its name
+   * @param creds
+   * @param resourceGroupName
+   * @param subnetName
+     * @return an AzureSubnetDescription instance containing details about the given subnet
+     */
+  AzureSubnetDescription getSubnet(AzureCredentials creds, String resourceGroupName, String subnetName) {
+    getSubnets(creds, resourceGroupName).find {it.name == subnetName}
   }
 
   /**
