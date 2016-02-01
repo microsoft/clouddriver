@@ -28,6 +28,7 @@ class AzureServerGroupDescription extends AzureResourceOpsDescription {
   AzureScaleSetSku sku
   AzureOperatingSystemConfig osConfig
   String provisioningState
+  String application // TODO standardize between this and appName
 
   static class AzureImage {
     String publisher
