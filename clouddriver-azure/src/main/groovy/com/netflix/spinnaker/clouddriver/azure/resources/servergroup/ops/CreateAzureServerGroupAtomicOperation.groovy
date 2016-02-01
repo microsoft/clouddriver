@@ -73,9 +73,8 @@ class CreateAzureServerGroupAtomicOperation implements AtomicOperation<Map> {
       }
       String vnetPrefix = vnet.addressSpace.addressPrefixes[0]
       String subnetPrefix = null
-      def subnets = description.credentials.networkClient.getSubnetsInVirtualNetwork(description.credentials, resourceGroupName, vnetPrefix)
-      if (subnets.size() > 0) {
-        subnetPrefix = subnets.max({ a, b -> AzureUtilities.compareIpv4AddrPrefixes(a.addressPrefix, b.addressPrefix) }).addressPrefix
+      if (vnet.subnets.size() > 0) {
+        subnetPrefix = vnet.subnets.max({ a, b -> AzureUtilities.compareIpv4AddrPrefixes(a.addressPrefix, b.addressPrefix) }).addressPrefix
       }
       String nextSubnet = AzureUtilities.getNextSubnet(vnetPrefix, subnetPrefix)
       String subnetName = AzureUtilities.getSubnetName(virtualNetworkName, nextSubnet)

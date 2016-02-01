@@ -169,12 +169,6 @@ class AzureNetworkClient extends AzureBaseClient {
     this.getSubnets(creds, null)
   }
 
-  Collection<AzureSubnetDescription> getSubnetsInVirtualNetwork(AzureCredentials creds, String resourceGroupName, String virtualNetworkAddressPrefix) {
-    this.getSubnets(creds, resourceGroupName).findAll {
-      0 == AzureUtilities.compareIpv4AddrPrefixes(virtualNetworkAddressPrefix, it.addressPrefix)
-    }
-  }
-
   /**
    * Retrieve a collection of all subnets for a give set of credentials, regardless of region, optionally
    * filtered for a given resource group
