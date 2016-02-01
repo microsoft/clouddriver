@@ -59,10 +59,8 @@ class AzureResourceManagerClient extends AzureBaseClient {
                                                 String resourceName,
                                                 Map<String, String> templateParams = [:]) {
 
-    if (!resourceGroupExists(credentials, resourceGroupName)) {
-      createResourceGroup(credentials, resourceGroupName, region)
-      createResourceGroupVNet(credentials, resourceGroupName, region)
-    }
+    // TODO validate that all callers invoke this themselves, then remove this call
+    initializeResourceGroupAndVNet(credentials, resourceGroupName, region)
 
     String deploymentName = resourceName + AzureUtilities.NAME_SEPARATOR +"deployment"
     if (!templateParams['location']) {
@@ -87,6 +85,19 @@ class AzureResourceManagerClient extends AzureBaseClient {
     } catch (e) {
       throw new RuntimeException("Unable to create Resource Group ${resourceGroupName} in region ${region}", e)
     }
+  }
+
+  ResourceGroup initializeResourceGroupAndVNet(AzureCredentials creds, String resourceGroupName, String region) {
+    ResourceGroup resourceGroup
+    if (!resourceGroupExists(creds, resourceGroupName)) {
+      resourceGroup = createResourceGroup(creds, resourceGroupName, region)
+    } else {
+      resourceGroup = this.getResourceManagementClient(creds).getResourceGroupsOperations().get(resourceGroupName).getResourceGroup()
+    }
+
+    initializeResourceGroupVNet(creds, resourceGroupName, region)
+
+    resourceGroup
   }
 
   ArrayList<ResourceGroup> getResourcesGroupsForApp(AzureCredentials creds, String applicationName) {
@@ -136,10 +147,12 @@ class AzureResourceManagerClient extends AzureBaseClient {
     ResourceManagementService.create(this.buildConfiguration(creds))
   }
 
-  private static void createResourceGroupVNet(AzureCredentials creds, String resourceGroupName, String region) {
+  private static void initializeResourceGroupVNet(AzureCredentials creds, String resourceGroupName, String region) {
     def vNetName = AzureUtilities.VNET_NAME_PREFIX + resourceGroupName
 
-    creds.getNetworkClient().createVirtualNetwork(creds, resourceGroupName, vNetName, region)
+    if (null == creds.getNetworkClient().getVirtualNetwork(creds, resourceGroupName, vNetName)) {
+      creds.getNetworkClient().createVirtualNetwork(creds, resourceGroupName, vNetName, region)
+    }
   }
 
   private static DeploymentExtended createTemplateDeployment(

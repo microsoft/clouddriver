@@ -133,6 +133,20 @@ class AzureNetworkClient extends AzureBaseClient {
   }
 
   /**
+   * Gets a virtual network object instance by name, or null if the virtual network does not exist
+   * @param creds the credentials to use when communicating with Azure subscription(s)
+   * @param resourceGroupName name of the resource group to look in for a virtual network
+   * @param virtualNetworkName name of the virtual network to get
+   * @return virtual network instance, or null if it does not exist
+   */
+  VirtualNetwork getVirtualNetwork(AzureCredentials creds, String resourceGroupName, String virtualNetworkName) {
+    this.getNetworkResourceProviderClient(creds).
+      getVirtualNetworksOperations().
+      get(resourceGroupName, virtualNetworkName).
+      getVirtualNetwork()
+  }
+
+  /**
    * Retrieve a collection of all subnets for a give set of credentials, regardless of resource group/region
    * @param creds the credentials to use when communicating to the Azure subscription(s)
    * @return a Collection of objects which represent a Subnet in Azure

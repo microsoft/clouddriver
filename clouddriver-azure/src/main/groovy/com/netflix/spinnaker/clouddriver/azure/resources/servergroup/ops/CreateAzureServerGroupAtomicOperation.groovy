@@ -57,6 +57,9 @@ class CreateAzureServerGroupAtomicOperation implements AtomicOperation<Map> {
       task.updateStatus(BASE_PHASE, "Beginning server group deployment")
 
       String resourceGroupName = AzureUtilities.getResourceGroupName(description.appName, description.region)
+
+      description.credentials.resourceManagerClient.initializeResourceGroupAndVNet(description.credentials, resourceGroupName, description.region)
+
       DeploymentExtended deployment = description.credentials.resourceManagerClient.createResourceFromTemplate(description.credentials,
         AzureServerGroupResourceTemplate.getTemplate(description),
         resourceGroupName,
