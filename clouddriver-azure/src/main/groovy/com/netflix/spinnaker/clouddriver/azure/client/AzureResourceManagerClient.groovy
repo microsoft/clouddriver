@@ -148,7 +148,7 @@ class AzureResourceManagerClient extends AzureBaseClient {
   }
 
   private static void initializeResourceGroupVNet(AzureCredentials creds, String resourceGroupName, String region) {
-    def vNetName = AzureUtilities.VNET_NAME_PREFIX + resourceGroupName
+    def vNetName = AzureUtilities.getVirtualNetworkName(resourceGroupName)
 
     if (null == creds.getNetworkClient().getVirtualNetwork(creds, resourceGroupName, vNetName)) {
       creds.getNetworkClient().createVirtualNetwork(creds, resourceGroupName, vNetName, region)

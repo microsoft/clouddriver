@@ -42,6 +42,13 @@ class AzureUtilities {
     description.appName + NAME_SEPARATOR + description.region
   }
 
+  static String getVirtualNetworkName(AzureResourceOpsDescription description) {
+    VNET_NAME_PREFIX + getResourceGroupName(description)
+  }
+
+  static String getVirtualNetworkName(String resourceGroupName) {
+    VNET_NAME_PREFIX + resourceGroupName
+  }
   static String getResourceGroupName(String appName, String region) {
     appName + NAME_SEPARATOR + region.replace(' ', '').toLowerCase()
   }
