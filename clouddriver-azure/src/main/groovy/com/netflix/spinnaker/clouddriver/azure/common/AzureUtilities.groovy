@@ -16,7 +16,7 @@
 
 package com.netflix.spinnaker.clouddriver.azure.common
 
-import com.microsoft.windowsazure.core.utils.CollectionStringBuilder
+//import com.microsoft.windowsazure.core.utils.CollectionStringBuilder
 import com.netflix.spinnaker.clouddriver.azure.resources.common.AzureResourceOpsDescription
 
 import java.util.regex.Matcher
@@ -93,7 +93,7 @@ class AzureUtilities {
       return null
     }
 
-    description.credentials.getResourceManagerClient().getResourceGroupLocation(resourceGroupName, description.getCredentials())
+    description.credentials.resourceManagerClient.getResourceGroupLocation(resourceGroupName)
   }
 
   static String getResourceGroupNameFromResourceId(String resourceId) {
@@ -242,6 +242,7 @@ class AzureUtilities {
     return resultPrefix
   }
 
+  /*
   public static String getAzureRESTUrl(String subscriptionId, String baseUrl, String targetUrl, List<String> queryParameters) {
     String url = baseUrl
     // Trim '/' character from the end of baseUrl.
@@ -261,5 +262,5 @@ class AzureUtilities {
     url = url.replace(" ", "%20")
 
     url
-  }
+  }*/
 }

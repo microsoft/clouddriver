@@ -118,6 +118,7 @@ class AzureUtilitiesSpec extends Specification {
     '254.255.255.0/24'    | '254.255.255.0/24'
   }
 
+  /*
   def "Get Azure REST URL"() {
     expect:
     AzureUtilities.getAzureRESTUrl(subscriptionId, baseUrl, targetUrl, qParams) == url
@@ -132,4 +133,5 @@ class AzureUtilitiesSpec extends Specification {
     null            | 'a.b.com'                       | '/c/d/e'                                                                               | ['1 1', '2=2']             | 'a.b.com/subscriptions//c/d/e?1%201&2=2'
     null            | null                            | null                                                                                   | null                       | 'null/subscriptions/null'
   }
+  */
 }

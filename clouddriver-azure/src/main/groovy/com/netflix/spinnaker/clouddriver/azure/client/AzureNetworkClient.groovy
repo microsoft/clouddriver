@@ -16,30 +16,38 @@
 
 package com.netflix.spinnaker.clouddriver.azure.client
 
+import com.microsoft.azure.CloudException
+import com.microsoft.azure.credentials.ApplicationTokenCredentials
+import com.microsoft.azure.management.network.NetworkManagementClient
+import com.microsoft.azure.management.network.NetworkManagementClientImpl
 import com.microsoft.azure.management.network.models.AddressSpace
+import com.microsoft.azure.management.network.models.DhcpOptions
 import com.microsoft.azure.management.network.models.LoadBalancer
 import com.microsoft.azure.management.network.models.NetworkSecurityGroup
-import com.microsoft.azure.management.network.models.PublicIpAddress
+import com.microsoft.azure.management.network.models.PublicIPAddress
 import com.microsoft.azure.management.network.models.Subnet
 import com.microsoft.azure.management.network.models.VirtualNetwork
-import com.microsoft.azure.management.network.NetworkResourceProviderClient
-import com.microsoft.azure.management.network.NetworkResourceProviderService
-import com.microsoft.windowsazure.core.OperationResponse
-import com.microsoft.windowsazure.exception.ServiceException
+
+import com.microsoft.rest.ServiceResponse
+
 import com.netflix.spinnaker.clouddriver.azure.common.AzureUtilities
 import com.netflix.spinnaker.clouddriver.azure.resources.loadbalancer.model.AzureLoadBalancerDescription
 import com.netflix.spinnaker.clouddriver.azure.resources.network.model.AzureVirtualNetworkDescription
 import com.netflix.spinnaker.clouddriver.azure.resources.securitygroup.model.AzureSecurityGroupDescription
 import com.netflix.spinnaker.clouddriver.azure.resources.subnet.model.AzureSubnetDescription
-import com.netflix.spinnaker.clouddriver.azure.security.AzureCredentials
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
+import okhttp3.logging.HttpLoggingInterceptor
 
 @Slf4j
 @CompileStatic
 class AzureNetworkClient extends AzureBaseClient {
-  AzureNetworkClient(String subscriptionId) {
+
+  private final NetworkManagementClient client
+
+  AzureNetworkClient(String subscriptionId, ApplicationTokenCredentials credentials) {
     super(subscriptionId)
+    this.client = initializeClient(credentials)
   }
 
   /**
@@ -48,18 +56,18 @@ class AzureNetworkClient extends AzureBaseClient {
    * @param region the location of the virtual network
    * @return a Collection of objects which represent a Load Balancer in Azure
    */
-  Collection<AzureLoadBalancerDescription> getLoadBalancersAll(AzureCredentials creds, String region) {
+  Collection<AzureLoadBalancerDescription> getLoadBalancersAll(String region) {
     def result = new ArrayList<AzureLoadBalancerDescription>()
 
     try {
-      def loadBalancers = this.getNetworkResourceProviderClient(creds).getLoadBalancersOperations().listAll().getLoadBalancers()
+      def loadBalancers = this.client.getLoadBalancersOperations().listAll().body
       def currentTime = System.currentTimeMillis()
       loadBalancers.each {item ->
         if (item.location == region) {
           def lbItem = getDescriptionForLoadBalancer(item)
           lbItem.appName = AzureUtilities.getAppNameFromResourceId(item.id)
           lbItem.tags = item.tags
-          lbItem.dnsName = getDnsNameForLoadBalancer(creds, AzureUtilities.getResourceGroupNameFromResourceId(item.id), item.name)
+          lbItem.dnsName = getDnsNameForLoadBalancer(AzureUtilities.getResourceGroupNameFromResourceId(item.id), item.name)
 
           // TODO: investigate and add code to handle changes to publicIP resource associate with current load balancer
           // There's a small probability that the publicIP resources associated with the current load balancer has changed
@@ -85,15 +93,15 @@ class AzureNetworkClient extends AzureBaseClient {
    * @param loadBalancerName the of the load balancer
    * @return a description object which represent a Load Balancer in Azure or null if Load Balancer could not be retrieved
    */
-  AzureLoadBalancerDescription getLoadBalancer(AzureCredentials creds, String resourceGroupName, String loadBalancerName) {
+  AzureLoadBalancerDescription getLoadBalancer(String resourceGroupName, String loadBalancerName) {
     try {
       def currentTime = System.currentTimeMillis()
-      def item = this.getNetworkResourceProviderClient(creds).getLoadBalancersOperations().get(resourceGroupName, loadBalancerName).loadBalancer
+      def item = this.client.getLoadBalancersOperations().get(resourceGroupName, loadBalancerName, null).body
       if (item) {
         def lbItem = getDescriptionForLoadBalancer(item)
         lbItem.appName = AzureUtilities.getAppNameFromResourceId(item.id)
         lbItem.tags = item.tags
-        lbItem.dnsName = getDnsNameForLoadBalancer(creds, AzureUtilities.getResourceGroupNameFromResourceId(item.id), item.name)
+        lbItem.dnsName = getDnsNameForLoadBalancer(AzureUtilities.getResourceGroupNameFromResourceId(item.id), item.name)
 
         // TODO: investigate and add code to handle changes to publicIP resource associate with current load balancer
         // There's a small probability that the publicIP resources associated with the current load balancer has changed
@@ -104,8 +112,8 @@ class AzureNetworkClient extends AzureBaseClient {
         lbItem.lastReadTime = currentTime
         return lbItem
       }
-    } catch (ServiceException e) {
-      log.info("getLoadBalancer(${resourceGroupName},${loadBalancerName}) -> Service Exception " + e.toString())
+    } catch (CloudException e) {
+      log.info("getLoadBalancer(${resourceGroupName},${loadBalancerName}) -> Cloud Exception " + e.toString())
     }
 
     null
@@ -113,8 +121,8 @@ class AzureNetworkClient extends AzureBaseClient {
 
   private static AzureLoadBalancerDescription getDescriptionForLoadBalancer(LoadBalancer azureLoadBalancer) {
     AzureLoadBalancerDescription description = new AzureLoadBalancerDescription(loadBalancerName: azureLoadBalancer.name)
-    description.stack = azureLoadBalancer.tags["stack"]
-    description.detail = azureLoadBalancer.tags["detail"]
+    description.stack = azureLoadBalancer.tags?["stack"]:""
+    description.detail = azureLoadBalancer.tags?["detail"]:""
     description.region = azureLoadBalancer.location
 
     for (def rule : azureLoadBalancer.loadBalancingRules) {
@@ -164,17 +172,17 @@ class AzureNetworkClient extends AzureBaseClient {
    * @param loadBalancerName name of the load balancer to delete
    * @return an OperationResponse object
    */
-  OperationResponse deleteLoadBalancer(AzureCredentials creds, String resourceGroupName, String loadBalancerName) {
-    def loadBalancer = getNetworkResourceProviderClient(creds).getLoadBalancersOperations().get(resourceGroupName, loadBalancerName).getLoadBalancer()
+  ServiceResponse deleteLoadBalancer(String resourceGroupName, String loadBalancerName) {
+    def loadBalancer = client.getLoadBalancersOperations().get(resourceGroupName, loadBalancerName, null).body
 
-    if (loadBalancer.frontendIpConfigurations.size() != 1) {
+    if (loadBalancer.frontendIPConfigurations.size() != 1) {
       throw new RuntimeException("Unexpected number of public IP addresses associated with the load balancer (should be only one)!")
     }
 
-    def publicIpAddressName = AzureUtilities.getResourceNameFromID(loadBalancer.frontendIpConfigurations.first().getPublicIpAddress().id)
-    this.getNetworkResourceProviderClient(creds).getLoadBalancersOperations().delete(resourceGroupName, loadBalancerName)
+    def publicIpAddressName = AzureUtilities.getResourceNameFromID(loadBalancer.frontendIPConfigurations.first().getPublicIPAddress().id)
+    client.getLoadBalancersOperations().delete(resourceGroupName, loadBalancerName)
 
-    this.getNetworkResourceProviderClient(creds).getPublicIpAddressesOperations().delete(resourceGroupName, publicIpAddressName)
+    client.getPublicIPAddressesOperations().delete(resourceGroupName, publicIpAddressName)
   }
 
   /**
@@ -184,8 +192,8 @@ class AzureNetworkClient extends AzureBaseClient {
    * @param securityGroupName name of the Azure network security group to delete
    * @return an OperationResponse object
    */
-  OperationResponse deleteSecurityGroup(AzureCredentials creds, String resourceGroupName, String securityGroupName) {
-    this.getNetworkResourceProviderClient(creds).getNetworkSecurityGroupsOperations().delete(resourceGroupName, securityGroupName)
+  ServiceResponse deleteSecurityGroup(String resourceGroupName, String securityGroupName) {
+    client.getNetworkSecurityGroupsOperations().delete(resourceGroupName, securityGroupName)
   }
 
   /**
@@ -195,16 +203,28 @@ class AzureNetworkClient extends AzureBaseClient {
    * @param virtualNetworkName name of the virtual network to create
    * @param region region to create the resource in
    */
-  void createVirtualNetwork(AzureCredentials creds, String resourceGroupName, String virtualNetworkName, String region, String addressPrefix = "10.0.0.0/16") {
+  void createVirtualNetwork(String resourceGroupName, String virtualNetworkName, String region, String addressPrefix = "10.0.0.0/16") {
     try {
+      List<Subnet> subnets = []
 
-      def virtualNetwork = new VirtualNetwork(region)
+      // Define address space
+      List<String> addressPrefixes = []
+      addressPrefixes.add(addressPrefix)
       AddressSpace addressSpace = new AddressSpace()
-      addressSpace.addressPrefixes.add(addressPrefix)
+      addressSpace.setAddressPrefixes(addressPrefixes)
+
+      // Define DHCP Options
+      DhcpOptions dhcpOptions = new DhcpOptions()
+      dhcpOptions.dnsServers = []
+
+      VirtualNetwork virtualNetwork = new VirtualNetwork()
+      virtualNetwork.setLocation(region)
+      virtualNetwork.setDhcpOptions(dhcpOptions)
+      virtualNetwork.setSubnets(subnets)
       virtualNetwork.setAddressSpace(addressSpace)
 
       //Create the virtual network for the resource group
-      this.getNetworkResourceProviderClient(creds).
+      client.
         getVirtualNetworksOperations().
         createOrUpdate(resourceGroupName, virtualNetworkName, virtualNetwork)
     }
@@ -213,13 +233,26 @@ class AzureNetworkClient extends AzureBaseClient {
     }
   }
 
-  void createSubnet(AzureCredentials creds, String resourceGroupName, String virtualNetworkName, String subnetName, String addressPrefix = '10.0.0.0/24') {
+  /**
+   *
+   * @param creds
+   * @param resourceGroupName
+   * @param virtualNetworkName
+   * @param subnetName
+   * @param addressPrefix
+     */
+  String createSubnet(String resourceGroupName, String virtualNetworkName, String subnetName, String addressPrefix = '10.0.0.0/24') {
     try {
-      def subnet = new Subnet(addressPrefix)
-      this.getNetworkResourceProviderClient(creds).
-        getSubnetsOperations().
-        createOrUpdate(resourceGroupName, virtualNetworkName, subnetName, subnet)
-      // TODO can we return the ID of the resulting subnet somehow?
+      Subnet subnet = new Subnet()
+      subnet.setAddressPrefix(addressPrefix)
+      def op = client
+        .getSubnetsOperations()
+        .createOrUpdate(resourceGroupName, virtualNetworkName, subnetName, subnet)
+
+      if (op.response.success) {
+        return op.body.name
+      }
+      null
     }
     catch (e) {
       throw new RuntimeException("Unable to create subnet ${subnetName} in Resource Group ${resourceGroupName}", e)
@@ -232,11 +265,11 @@ class AzureNetworkClient extends AzureBaseClient {
    * @param region the location of the network security group
    * @return a Collection of objects which represent a Network Security Group in Azure
    */
-  Collection<AzureSecurityGroupDescription> getNetworkSecurityGroupsAll(AzureCredentials creds, String region) {
+  Collection<AzureSecurityGroupDescription> getNetworkSecurityGroupsAll(String region) {
     def result = new ArrayList<AzureSecurityGroupDescription>()
 
     try {
-      def securityGroups = this.getNetworkResourceProviderClient(creds).getNetworkSecurityGroupsOperations().listAll().networkSecurityGroups
+      def securityGroups = this.client.getNetworkSecurityGroupsOperations().listAll().body
       def currentTime = System.currentTimeMillis()
       securityGroups.each { item ->
         if (item.location == region) {
@@ -259,9 +292,9 @@ class AzureNetworkClient extends AzureBaseClient {
    * @param securityGroupName name of the Azure network security group to be retrieved
    * @return a description object which represent a Network Security Group in Azure
    */
-  AzureSecurityGroupDescription getNetworkSecurityGroup(AzureCredentials creds, String resourceGroupName, String securityGroupName) {
+  AzureSecurityGroupDescription getNetworkSecurityGroup(String resourceGroupName, String securityGroupName) {
     try {
-      def securityGroup = this.getNetworkResourceProviderClient(creds).getNetworkSecurityGroupsOperations().get(resourceGroupName, securityGroupName).networkSecurityGroup
+      def securityGroup = this.client.getNetworkSecurityGroupsOperations().get(resourceGroupName, securityGroupName, null).body
       def currentTime = System.currentTimeMillis()
       def sgItem = getAzureSecurityGroupDescription(securityGroup)
       sgItem.lastReadTime = currentTime
@@ -344,11 +377,11 @@ class AzureNetworkClient extends AzureBaseClient {
    * @param region the location of the virtual network
    * @return a Collection of objects which represent a Subnet in Azure
    */
-  Collection<AzureSubnetDescription> getSubnetsInRegion(AzureCredentials creds, String region) {
+  Collection<AzureSubnetDescription> getSubnetsInRegion(String region) {
     def result = new ArrayList<AzureSubnetDescription>()
 
     try {
-      def vnets = this.getNetworkResourceProviderClient(creds).getVirtualNetworksOperations().listAll().virtualNetworks
+      def vnets = this.client.getVirtualNetworksOperations().listAll().body
       def currentTime = System.currentTimeMillis()
       vnets.each { item->
         if (item.location == region) {
@@ -361,7 +394,6 @@ class AzureNetworkClient extends AzureBaseClient {
     } catch (Exception e) {
       log.info("getSubnetsAll -> Unexpected exception " + e.toString())
     }
-
     result
   }
 
@@ -372,7 +404,7 @@ class AzureNetworkClient extends AzureBaseClient {
    * @param resourceGroupName specify the resource group that is used to filter subnets; only
    * @return a Collection of objects which represent a Subnet in Azure
    */
-  Collection<AzureSubnetDescription> getSubnetsInResourceGroup(AzureCredentials creds, String resourceGroupName) {
+  Collection<AzureSubnetDescription> getSubnetsInResourceGroup(String resourceGroupName) {
 
     def result = new ArrayList<AzureSubnetDescription>()
 
@@ -380,9 +412,9 @@ class AzureNetworkClient extends AzureBaseClient {
       List<VirtualNetwork> vnetList
 
       if (resourceGroupName && !resourceGroupName.isEmpty()) {
-        vnetList = this.getNetworkResourceProviderClient(creds).getVirtualNetworksOperations().list(resourceGroupName).virtualNetworks
+        vnetList = this.client.getVirtualNetworksOperations().list(resourceGroupName).body
       } else {
-        vnetList = this.getNetworkResourceProviderClient(creds).getVirtualNetworksOperations().listAll().virtualNetworks
+        vnetList = this.client.getVirtualNetworksOperations().listAll().body
       }
       def currentTime = System.currentTimeMillis()
       vnetList.each { item->
@@ -403,10 +435,10 @@ class AzureNetworkClient extends AzureBaseClient {
    * @param creds
    * @param resourceGroupName
    * @param subnetName
-   * @return an AzureSubnetDescription instance containing the details of the given subnet
+   * @return an AzureSubnetDescription instance containing details about the given subnet
    */
-  AzureSubnetDescription getSubnet(AzureCredentials creds, String resourceGroupName, String subnetName) {
-    getSubnetsInResourceGroup(creds, resourceGroupName).find {it.name == subnetName}
+  AzureSubnetDescription getSubnet(String resourceGroupName, String subnetName) {
+    getSubnetsInResourceGroup(resourceGroupName).find {it.name == subnetName}
   }
 
   /**
@@ -416,11 +448,11 @@ class AzureNetworkClient extends AzureBaseClient {
    * @param virtualNetworkName name of the virtual network to get
    * @return virtual network instance, or null if it does not exist
    */
-  VirtualNetwork getVirtualNetwork(AzureCredentials creds, String resourceGroupName, String virtualNetworkName) {
-    this.getNetworkResourceProviderClient(creds).
-      getVirtualNetworksOperations().
-      get(resourceGroupName, virtualNetworkName).
-      getVirtualNetwork()
+  VirtualNetwork getVirtualNetwork(String resourceGroupName, String virtualNetworkName) throws CloudException, IOException, IllegalArgumentException {
+    client
+      .getVirtualNetworksOperations()
+      .get(resourceGroupName, virtualNetworkName, null)
+      .body
   }
 
   /**
@@ -429,11 +461,11 @@ class AzureNetworkClient extends AzureBaseClient {
    * @param region the location of the virtual network
    * @return a Collection of objects which represent a Virtual Network in Azure
    */
-  Collection<AzureVirtualNetworkDescription> getVirtualNetworksAll(AzureCredentials creds, String region) {
+  Collection<AzureVirtualNetworkDescription> getVirtualNetworksAll(String region) throws CloudException, IOException, IllegalArgumentException {
     def result = new ArrayList<AzureVirtualNetworkDescription>()
 
     try {
-      def vnetList = this.getNetworkResourceProviderClient(creds).getVirtualNetworksOperations().listAll().virtualNetworks
+      def vnetList = this.client.getVirtualNetworksOperations().listAll().body
       def currentTime = System.currentTimeMillis()
       vnetList.each { item ->
         if (item.location == region) {
@@ -477,18 +509,22 @@ class AzureNetworkClient extends AzureBaseClient {
    * @param loadBalancerName the name of the load balancer in Azure
    * @return the dns name of the given load balancer
    */
-  String getDnsNameForLoadBalancer(AzureCredentials creds, String resourceGroupName, String loadBalancerName) {
+  String getDnsNameForLoadBalancer(String resourceGroupName, String loadBalancerName) {
     String dnsName = "none"
 
     try {
-      def loadBalancer = this.getNetworkResourceProviderClient(creds).getLoadBalancersOperations().get(resourceGroupName, loadBalancerName).getLoadBalancer()
-      if (loadBalancer.frontendIpConfigurations) {
-        if (loadBalancer.frontendIpConfigurations.size() != 1) {
+      def loadBalancer = client.getLoadBalancersOperations().get(resourceGroupName, loadBalancerName, null).body
+      if (loadBalancer.frontendIPConfigurations) {
+        if (loadBalancer.frontendIPConfigurations.size() != 1) {
           log.info("getDnsNameForLoadBalancer -> Unexpected number of public IP addresses associated with the load balancer (should be only one)!")
         }
 
-        def publicIpResource = loadBalancer.frontendIpConfigurations.first()?.getPublicIpAddress()?.id
-        PublicIpAddress publicIp = publicIpResource ? this.getNetworkResourceProviderClient(creds).getPublicIpAddressesOperations().get(resourceGroupName, AzureUtilities.getNameFromResourceId(publicIpResource))?.publicIpAddress : null
+        def publicIpResource = loadBalancer.frontendIPConfigurations.first()?.getPublicIPAddress()?.id
+        PublicIPAddress publicIp = publicIpResource ?
+          client
+            .getPublicIPAddressesOperations()
+            .get(resourceGroupName, AzureUtilities.getNameFromResourceId(publicIpResource), null)?.body
+          : null
         dnsName = publicIp ? publicIp.dnsSettings?.fqdn : "none"
       }
     } catch (Exception e) {
@@ -498,13 +534,11 @@ class AzureNetworkClient extends AzureBaseClient {
     dnsName
   }
 
-  /**
-   * get the NetworkResourceProviderClient which will be used for all interaction related to network resources in Azure
-   * @param creds the credentials to use when communicating to the Azure subscription(s)
-   * @return an instance of the Azure NetworkResourceProviderClient
-   */
-  protected NetworkResourceProviderClient getNetworkResourceProviderClient(AzureCredentials creds) {
-    NetworkResourceProviderService.create(this.buildConfiguration(creds))
+  private NetworkManagementClient initializeClient(ApplicationTokenCredentials tokenCredentials) {
+    NetworkManagementClient networkManagementClient = new NetworkManagementClientImpl(tokenCredentials)
+    networkManagementClient.setSubscriptionId(this.subscriptionId)
+    networkManagementClient.setLogLevel(HttpLoggingInterceptor.Level.NONE)
+    networkManagementClient
   }
 
 }
