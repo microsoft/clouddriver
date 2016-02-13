@@ -14,6 +14,10 @@ configurations.all {
   exclude group: "org.slf4j", module: "slf4j-log4j12"
 }
 
+repositories {
+  maven { url "http://adxsnapshots.azurewebsites.net"}
+}
+
 dependencies {
   compile project(':clouddriver-titus')
   compile project(':clouddriver-aws')
