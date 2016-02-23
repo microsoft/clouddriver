@@ -381,7 +381,7 @@ class AzureServerGroupResourceTemplate {
     String id
 
     LoadBalancerBackendAddressPool(AzureServerGroupDescription description) {
-      id = String.format("[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', '%s', 'be-%s')]", description.loadBalancerName, description.loadBalancerName)
+      id = "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', '$description.loadBalancerName', 'be-$description.loadBalancerName')]"
     }
   }
 
