@@ -98,7 +98,7 @@ class AzureServerGroupResourceTemplate {
       String noDashName = description.name.replaceAll("-", "")
 
       for (int i = 0; i < description.getStorageAccountCount(); i++) {
-        String uniqueName = String.format("[concat(uniqueString(concat(resourceGroup().id, subscription().id, '%s', variables('%s'), '%s')))]", noDashName, newStorageAccountsSuffixVar, i)
+        String uniqueName = "[concat(uniqueString(concat(resourceGroup().id, subscription().id, '$noDashName', variables('$newStorageAccountsSuffixVar'), '$i')))]"
         uniqueStorageNameArray.add(uniqueName)
       }
     }
