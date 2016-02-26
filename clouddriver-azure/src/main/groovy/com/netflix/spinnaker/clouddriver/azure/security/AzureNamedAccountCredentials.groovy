@@ -19,6 +19,7 @@ package com.netflix.spinnaker.clouddriver.azure.security
 import com.netflix.spinnaker.clouddriver.azure.client.AzureComputeClient
 import com.netflix.spinnaker.clouddriver.azure.client.AzureNetworkClient
 import com.netflix.spinnaker.clouddriver.azure.client.AzureResourceManagerClient
+import com.netflix.spinnaker.clouddriver.azure.resources.vmimage.model.AzureCustomImageStorage
 import com.netflix.spinnaker.clouddriver.azure.resources.vmimage.model.AzureVMImage
 import com.netflix.spinnaker.clouddriver.security.AccountCredentials
 import groovy.transform.CompileStatic
@@ -35,6 +36,7 @@ public class AzureNamedAccountCredentials implements AccountCredentials<AzureCre
   private final String appKey
   final List<AzureRegion> regions
   final List<AzureVMImage> vmImages
+  final List<AzureCustomImageStorage> vmCustomImages
   final String applicationName
   final List<String> requiredGroupMembership
   final AzureCredentials credentials
@@ -49,6 +51,7 @@ public class AzureNamedAccountCredentials implements AccountCredentials<AzureCre
                                String subscriptionId,
                                List<String> regions,
                                List<AzureVMImage> vmImages,
+                               List<AzureCustomImageStorage> vmCustomImages,
                                String applicationName,
                                List<String> requiredGroupMembership = null) {
     this.accountName = accountName
@@ -60,6 +63,7 @@ public class AzureNamedAccountCredentials implements AccountCredentials<AzureCre
     this.subscriptionId = subscriptionId
     this.regions = buildRegions(regions)
     this.vmImages = vmImages ?: [] as List<AzureVMImage>
+    this.vmCustomImages = vmCustomImages ?: [] as List<AzureCustomImageStorage>
     this.applicationName = applicationName
     this.requiredGroupMembership = requiredGroupMembership ?: [] as List<String>
     this.credentials = appKey.isEmpty() ? null : buildCredentials()

@@ -53,6 +53,8 @@ aws:
         virtualName: ephemeral1
   defaultRegions:
     - name: us-east-1
+    - name: us-west-1
+    - name: us-west-2
   defaultKeyPairTemplate: '{{name}}-keypair'
 
   # an empty list means we are directly managing the AWS account we have credentials for (named default.account.env)
@@ -64,7 +66,7 @@ azure:
   defaults:
 
   accounts:
-    - name: default
+    - name: azure-cred1
       clientId: ${AZURE_CLIENT_ID}
       appKey: ${AZURE_APPKEY}
       tenantId: ${AZURE_TENANT_ID}
@@ -95,6 +97,15 @@ azure:
         offer: "SLES"
         sku: "12-SP1"
         version: "2015.12.15"
+      customImages:
+      - scs: ${AZURE_SCS1}
+        blobDir: "system/Microsoft.Compute/Images"
+        osType: "Windows"
+        region: "westus"
+      - scs: ${AZURE_SCS2}
+        blobDir: "vhds"
+        osType: "Linux"
+        region: "westus"
 
 google:
   enabled: false

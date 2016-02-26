@@ -98,6 +98,7 @@ public abstract class AzureBaseClient {
       if (resultJson) {
         return mapper.readValue(resultJson, valueType)
       }
+      httpResponse.close()
     }
     catch (Exception e) {
       log.info("getVMImagesAll -> Unexpected exception " + e.toString())
