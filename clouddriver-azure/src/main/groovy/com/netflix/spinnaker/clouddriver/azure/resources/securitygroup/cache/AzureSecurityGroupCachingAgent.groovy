@@ -112,21 +112,11 @@ class AzureSecurityGroupCachingAgent implements CachingAgent, OnDemandAgent, Acc
 
   @Override
   OnDemandAgent.OnDemandResult handle(ProviderCache providerCache, Map<String, ? extends Object> data) {
-    if (!data.containsKey("securityGroupName")) {
-      return null
-    }
-    if (!data.containsKey("account")) {
-      return null
-    }
-    if (!data.containsKey("region")) {
-      return null
-    }
-
-    if (accountName != data.account) {
-      return null
-    }
-
-    if (region != data.region) {
+    if (!data.containsKey("securityGroupName") ||
+        !data.containsKey("account") ||
+        !data.containsKey("region")  ||
+        accountName != data.account ||
+        region != data.region) {
       return null
     }
 
