@@ -250,7 +250,7 @@ class AzureNetworkClient extends AzureBaseClient {
         .createOrUpdate(resourceGroupName, virtualNetworkName, subnetName, subnet)
 
       if (op.response.success) {
-        return op.body.name
+        return op.body.id
       }
       null
     }
@@ -395,50 +395,6 @@ class AzureNetworkClient extends AzureBaseClient {
       log.info("getSubnetsAll -> Unexpected exception " + e.toString())
     }
     result
-  }
-
-  /**
-   * Retrieve a collection of all subnets for a give set of credentials, regardless of region, optionally
-   * filtered for a given resource group
-   * @param creds the credentials to use when communicating to the Azure subscription(s)
-   * @param resourceGroupName specify the resource group that is used to filter subnets; only
-   * @return a Collection of objects which represent a Subnet in Azure
-   */
-  Collection<AzureSubnetDescription> getSubnetsInResourceGroup(String resourceGroupName) {
-
-    def result = new ArrayList<AzureSubnetDescription>()
-
-    try {
-      List<VirtualNetwork> vnetList
-
-      if (resourceGroupName && !resourceGroupName.isEmpty()) {
-        vnetList = this.client.getVirtualNetworksOperations().list(resourceGroupName).body
-      } else {
-        vnetList = this.client.getVirtualNetworksOperations().listAll().body
-      }
-      def currentTime = System.currentTimeMillis()
-      vnetList.each { item->
-        getSubnetForVirtualNetwork(item).each { AzureSubnetDescription subnet ->
-          subnet.lastReadTime = currentTime
-          result += subnet
-        }
-      }
-    } catch (Exception e) {
-      log.info("getSubnetsAll -> Unexpected exception " + e.toString())
-    }
-
-    result
-  }
-
-  /**
-   * Retrieves a particular subnet from a given resource group based on its name
-   * @param creds
-   * @param resourceGroupName
-   * @param subnetName
-   * @return an AzureSubnetDescription instance containing details about the given subnet
-   */
-  AzureSubnetDescription getSubnet(String resourceGroupName, String subnetName) {
-    getSubnetsInResourceGroup(resourceGroupName).find {it.name == subnetName}
   }
 
   /**
