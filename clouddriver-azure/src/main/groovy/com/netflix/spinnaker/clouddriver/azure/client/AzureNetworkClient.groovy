@@ -404,7 +404,7 @@ class AzureNetworkClient extends AzureBaseClient {
    * @param virtualNetworkName name of the virtual network to get
    * @return virtual network instance, or null if it does not exist
    */
-  VirtualNetwork getVirtualNetwork(String resourceGroupName, String virtualNetworkName) throws CloudException, IOException, IllegalArgumentException {
+  VirtualNetwork getVirtualNetwork(String resourceGroupName, String virtualNetworkName) {
     client
       .getVirtualNetworksOperations()
       .get(resourceGroupName, virtualNetworkName, null)
@@ -417,7 +417,7 @@ class AzureNetworkClient extends AzureBaseClient {
    * @param region the location of the virtual network
    * @return a Collection of objects which represent a Virtual Network in Azure
    */
-  Collection<AzureVirtualNetworkDescription> getVirtualNetworksAll(String region) throws CloudException, IOException, IllegalArgumentException {
+  Collection<AzureVirtualNetworkDescription> getVirtualNetworksAll(String region){
     def result = new ArrayList<AzureVirtualNetworkDescription>()
 
     try {

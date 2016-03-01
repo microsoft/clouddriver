@@ -41,9 +41,9 @@ class AzureCredentials {
   final String project
   final String subscriptionId
 
-  final AzureResourceManagerClient resourceManagerClient = null
-  final AzureNetworkClient networkClient = null
-  final AzureComputeClient computeClient = null
+  final AzureResourceManagerClient resourceManagerClient
+  final AzureNetworkClient networkClient
+  final AzureComputeClient computeClient
 
   AzureCredentials(String tenantId, String clientId, String appKey, String subscriptionId) {
     this.tenantId = tenantId

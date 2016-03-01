@@ -54,13 +54,6 @@ class AzureUtilities {
     description.appName + NAME_SEPARATOR + description.region
   }
 
-  static String getVirtualNetworkName(AzureResourceOpsDescription description) {
-    if (description == null) {
-      return null
-    }
-    VNET_NAME_PREFIX + getResourceGroupName(description)
-  }
-
   static String getVirtualNetworkName(String resourceGroupName) {
     if (resourceGroupName == null) {
       return null
@@ -82,18 +75,6 @@ class AzureUtilities {
       return null
     }
     appName + NAME_SEPARATOR + region.replace(' ', '').toLowerCase()
-  }
-
-  static String getResourceGroupLocation(AzureResourceOpsDescription description) {
-    if (description == null) {
-      return null
-    }
-    def resourceGroupName = getResourceGroupName(description)
-    if (resourceGroupName == null) {
-      return null
-    }
-
-    description.credentials.resourceManagerClient.getResourceGroupLocation(resourceGroupName)
   }
 
   static String getResourceGroupNameFromResourceId(String resourceId) {
@@ -126,14 +107,6 @@ class AzureUtilities {
     }
 
     getResourceGroupNameFromResourceId(resourceId).split(NAME_SEPARATOR).first()
-  }
-
-  static String getLocationFromResourceGroupName(String resourceId) {
-    if (resourceId == null) {
-      return null
-    }
-
-    getResourceGroupNameFromResourceId(resourceId).split(NAME_SEPARATOR).last()
   }
 
   static String getNameFromResourceId(String resourceId) {

@@ -31,7 +31,7 @@ import groovy.util.logging.Slf4j
 public abstract class AzureBaseClient {
   final String subscriptionId
 
-  static ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+  static ObjectMapper mapper
 
   /**
    * Constructor
@@ -45,18 +45,6 @@ public abstract class AzureBaseClient {
 
   /**
    * Create the application token credentials object to use for calls to Azure
-   * @param credentials - Spinnaker Credentials object for Azure credentials
-   * @return initialized ApplicationTokenCredentials object
-   */
-  protected ApplicationTokenCredentials getTokenCredentials(AzureCredentials credentials) {
-    new ApplicationTokenCredentials(credentials.clientId,
-      credentials.tenantId,
-      credentials.appKey,
-      AzureEnvironment.AZURE)
-  }
-
-  /**
-   *
    * @param clientId
    * @param tenantId
    * @param secret

@@ -24,7 +24,6 @@ import com.microsoft.azure.management.resources.models.DeploymentExtended
 import com.microsoft.azure.management.resources.models.DeploymentMode
 import com.microsoft.azure.management.resources.models.DeploymentOperation
 import com.microsoft.azure.management.resources.models.DeploymentProperties
-import com.microsoft.azure.management.resources.models.GenericResourceFilter
 import com.microsoft.azure.management.resources.models.ResourceGroup
 import com.microsoft.azure.management.resources.ResourceManagementClient
 import com.netflix.spinnaker.clouddriver.azure.common.AzureUtilities
@@ -224,7 +223,7 @@ class AzureResourceManagerClient extends AzureBaseClient {
     DeploymentMode deploymentMode,
     String deploymentName,
     String template,
-    Map<String, String> templateParameters) throws CloudException, IOException, IllegalArgumentException, InterruptedException {
+    Map<String, String> templateParameters) {
 
     DeploymentProperties deploymentProperties = new DeploymentProperties()
     deploymentProperties.setMode(deploymentMode)

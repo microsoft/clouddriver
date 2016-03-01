@@ -19,7 +19,6 @@ package com.netflix.spinnaker.clouddriver.azure.client
 import com.microsoft.azure.credentials.ApplicationTokenCredentials
 import com.microsoft.azure.management.compute.ComputeManagementClient
 import com.netflix.spinnaker.clouddriver.azure.resources.vmimage.model.AzureVMImage
-import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import com.microsoft.azure.management.compute.ComputeManagementClientImpl
 import groovy.transform.CompileStatic
