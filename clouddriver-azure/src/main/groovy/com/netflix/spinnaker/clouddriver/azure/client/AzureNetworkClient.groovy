@@ -247,7 +247,8 @@ class AzureNetworkClient extends AzureBaseClient {
     Subnet subnet = new Subnet()
     subnet.setAddressPrefix(addressPrefix)
 
-    //This should throw a CloudException or IOException if the operation fails
+    //This will throw a CloudException or IOException if the operation fails
+    //Let it bubble up to the caller to handle as they see fit
     def op = client
       .getSubnetsOperations()
       .createOrUpdate(resourceGroupName, virtualNetworkName, subnetName, subnet)
