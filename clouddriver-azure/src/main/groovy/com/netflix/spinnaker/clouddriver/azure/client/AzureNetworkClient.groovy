@@ -243,24 +243,25 @@ class AzureNetworkClient extends AzureBaseClient {
    * @throws RuntimeException Throws RuntimeException if operation response indicates failure
    * @returns Resource ID of subnet created
    */
-  String createSubnet(String resourceGroupName, String virtualNetworkName, String subnetName, String addressPrefix = '10.0.0.0/24') throws RuntimeException {
+  String createSubnet(String resourceGroupName, String virtualNetworkName, String subnetName, String addressPrefix = '10.0.0.0/24') {
     Subnet subnet = new Subnet()
     subnet.setAddressPrefix(addressPrefix)
 
-    //This will throw a CloudException or IOException if the operation fails
-    //Let it bubble up to the caller to handle as they see fit
-    def op = client
-      .getSubnetsOperations()
-      .createOrUpdate(resourceGroupName, virtualNetworkName, subnetName, subnet)
+    //This will throw an exception if the it fails. If it returns then the call was successful
+    //Log the error Let it bubble up to the caller to handle as they see fit
+    try {
+      def op = client
+        .getSubnetsOperations()
+        .createOrUpdate(resourceGroupName, virtualNetworkName, subnetName, subnet)
 
-    // If the method does succeed but the response is null or the response was not successful
-    // then throw a runtime exception for the caller to catch
-    if (!op?.response?.success) {
-      throw new RuntimeException("Unable to create subnet ${subnetName} in Resource Group ${resourceGroupName}")
+      // Return the resource Id
+      op.body.id
+
+    } catch (Exception e) {
+      // Add something to the log to show that the subnet creation failed then rethrow the exception
+      log.error("Unable to create subnet ${subnetName} in Resource Group ${resourceGroupName}")
+      throw e
     }
-
-    // Return the resource Id
-    op.body.id
   }
 
   /**
