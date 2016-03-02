@@ -52,7 +52,6 @@ class AzureNetworkClient extends AzureBaseClient {
 
   /**
    * Retrieve a collection of all load balancer for a give set of credentials and the location
-   * @param creds the credentials to use when communicating to the Azure subscription(s)
    * @param region the location of the virtual network
    * @return a Collection of objects which represent a Load Balancer in Azure
    */
@@ -64,19 +63,25 @@ class AzureNetworkClient extends AzureBaseClient {
       def currentTime = System.currentTimeMillis()
       loadBalancers.each {item ->
         if (item.location == region) {
-          def lbItem = getDescriptionForLoadBalancer(item)
-          lbItem.appName = AzureUtilities.getAppNameFromResourceId(item.id)
-          lbItem.tags = item.tags
-          lbItem.dnsName = getDnsNameForLoadBalancer(AzureUtilities.getResourceGroupNameFromResourceId(item.id), item.name)
+          try {
+            def lbItem = getDescriptionForLoadBalancer(item)
+            lbItem.appName = AzureUtilities.getAppNameFromResourceId(item.id)
+            lbItem.tags = item.tags
+            lbItem.dnsName = getDnsNameForLoadBalancer(AzureUtilities.getResourceGroupNameFromResourceId(item.id), item.name)
 
-          // TODO: investigate and add code to handle changes to publicIP resource associate with current load balancer
-          // There's a small probability that the publicIP resources associated with the current load balancer has changed
-          //  from the time we read the load balancer current properties at the beginning of the current closure/loop
-          //  and we should reflect that in the lastReadTime property.
-          // We currently don't use any of the publicIp properties other than the DNS so we don't need to address that now
+            // TODO: investigate and add code to handle changes to publicIP resource associate with current load balancer
+            // There's a small probability that the publicIP resources associated with the current load balancer has changed
+            //  from the time we read the load balancer current properties at the beginning of the current closure/loop
+            //  and we should reflect that in the lastReadTime property.
+            // We currently don't use any of the publicIp properties other than the DNS so we don't need to address that now
 
-          lbItem.lastReadTime = currentTime
-          result += lbItem
+            lbItem.lastReadTime = currentTime
+            result += lbItem
+          } catch (RuntimeException re) {
+            // if we get a runtime exception here, log it but keep processing the rest of the
+            // load balancers
+            log.error("Unable to process load balancer ${item.name}: ${re.message}")
+          }
         }
       }
     } catch (Exception e) {
@@ -88,7 +93,6 @@ class AzureNetworkClient extends AzureBaseClient {
 
   /**
    * Retrieve an Azure load balancer for a give set of credentials, resource group and name
-   * @param creds the credentials to use when communicating to the Azure subscription(s)
    * @param resourceGroupName the name of the resource group to look into
    * @param loadBalancerName the of the load balancer
    * @return a description object which represent a Load Balancer in Azure or null if Load Balancer could not be retrieved
@@ -167,10 +171,9 @@ class AzureNetworkClient extends AzureBaseClient {
 
   /**
    * Delete a load balancer in Azure
-   * @param creds the credentials to use when communicating to the Azure subscription(s)
    * @param resourceGroupName name of the resource group where the load balancer was created (see application name and region/location)
    * @param loadBalancerName name of the load balancer to delete
-   * @return an OperationResponse object
+   * @return a ServiceResponse object
    */
   ServiceResponse deleteLoadBalancer(String resourceGroupName, String loadBalancerName) {
     def loadBalancer = client.getLoadBalancersOperations().get(resourceGroupName, loadBalancerName, null).body
@@ -187,7 +190,6 @@ class AzureNetworkClient extends AzureBaseClient {
 
   /**
    * Delete a network security group in Azure
-   * @param creds the credentials to use when communicating to the Azure subscription(s)
    * @param resourceGroupName name of the resource group where the security group was created (see application name and region/location)
    * @param securityGroupName name of the Azure network security group to delete
    * @return an OperationResponse object
@@ -198,7 +200,6 @@ class AzureNetworkClient extends AzureBaseClient {
 
   /**
    * Create an Azure virtual network resource
-   * @param creds the credentials to use when communicating to the Azure subscription(s)
    * @param resourceGroupName name of the resource group where the load balancer was created
    * @param virtualNetworkName name of the virtual network to create
    * @param region region to create the resource in
@@ -234,34 +235,35 @@ class AzureNetworkClient extends AzureBaseClient {
   }
 
   /**
-   *
-   * @param creds
-   * @param resourceGroupName
-   * @param virtualNetworkName
-   * @param subnetName
-   * @param addressPrefix
-     */
-  String createSubnet(String resourceGroupName, String virtualNetworkName, String subnetName, String addressPrefix = '10.0.0.0/24') {
-    try {
-      Subnet subnet = new Subnet()
-      subnet.setAddressPrefix(addressPrefix)
-      def op = client
-        .getSubnetsOperations()
-        .createOrUpdate(resourceGroupName, virtualNetworkName, subnetName, subnet)
+   * Create a new subnet in the virtual network specified
+   * @param resourceGroupName Resource Group in Azure where vNet and Subnet will exist
+   * @param virtualNetworkName Virtual Network to create the subnet in
+   * @param subnetName Name of subnet to create
+   * @param addressPrefix - Address Prefix to use for Subnet defaults to 10.0.0.0/24
+   * @throws RuntimeException Throws RuntimeException if operation response indicates failure
+   * @returns Resource ID of subnet created
+   */
+  String createSubnet(String resourceGroupName, String virtualNetworkName, String subnetName, String addressPrefix = '10.0.0.0/24') throws RuntimeException {
+    Subnet subnet = new Subnet()
+    subnet.setAddressPrefix(addressPrefix)
 
-      if (op.response.success) {
-        return op.body.id
-      }
-      null
+    //This should throw a CloudException or IOException if the operation fails
+    def op = client
+      .getSubnetsOperations()
+      .createOrUpdate(resourceGroupName, virtualNetworkName, subnetName, subnet)
+
+    // If the method does succeed but the response is null or the response was not successful
+    // then throw a runtime exception for the caller to catch
+    if (!op?.response?.success) {
+      throw new RuntimeException("Unable to create subnet ${subnetName} in Resource Group ${resourceGroupName}")
     }
-    catch (e) {
-      throw new RuntimeException("Unable to create subnet ${subnetName} in Resource Group ${resourceGroupName}", e)
-    }
+
+    // Return the resource Id
+    op.body.id
   }
 
   /**
    * Retrieve a collection of all network security groups for a give set of credentials and the location
-   * @param creds the credentials to use when communicating to the Azure subscription(s)
    * @param region the location of the network security group
    * @return a Collection of objects which represent a Network Security Group in Azure
    */
@@ -273,9 +275,15 @@ class AzureNetworkClient extends AzureBaseClient {
       def currentTime = System.currentTimeMillis()
       securityGroups.each { item ->
         if (item.location == region) {
-          def sgItem = getAzureSecurityGroupDescription(item)
-          sgItem.lastReadTime = currentTime
-          result += sgItem
+          try {
+            def sgItem = getAzureSecurityGroupDescription(item)
+            sgItem.lastReadTime = currentTime
+            result += sgItem
+          } catch (RuntimeException re) {
+            // if we get a runtime exception here, log it but keep processing the rest of the
+            // NSGs
+            log.error("Unable to process network security group ${item.name}: ${re.message}")
+          }
         }
       }
     } catch (Exception e) {
@@ -287,7 +295,6 @@ class AzureNetworkClient extends AzureBaseClient {
 
   /**
    * Retrieve an Azure network security group for a give set of credentials, resource group and network security group name
-   * @param creds the credentials to use when communicating to the Azure subscription(s)
    * @param resourceGroupName name of the resource group where the security group was created (see application name and region/location)
    * @param securityGroupName name of the Azure network security group to be retrieved
    * @return a description object which represent a Network Security Group in Azure
@@ -373,7 +380,6 @@ class AzureNetworkClient extends AzureBaseClient {
 
   /**
    * Retrieve a collection of all subnets for a give set of credentials and the location
-   * @param creds the credentials to use when communicating to the Azure subscription(s)
    * @param region the location of the virtual network
    * @return a Collection of objects which represent a Subnet in Azure
    */
@@ -385,9 +391,15 @@ class AzureNetworkClient extends AzureBaseClient {
       def currentTime = System.currentTimeMillis()
       vnets.each { item->
         if (item.location == region) {
-          getSubnetForVirtualNetwork(item).each { AzureSubnetDescription subnet ->
-            subnet.lastReadTime = currentTime
-            result += subnet
+          try {
+            getSubnetForVirtualNetwork(item).each { AzureSubnetDescription subnet ->
+              subnet.lastReadTime = currentTime
+              result += subnet
+            }
+          } catch (RuntimeException re) {
+            // if we get a runtime exception here, log it but keep processing the rest of the
+            // subnets
+            log.error("Unable to process subnets for virtual network ${item.name}: ${re.message}")
           }
         }
       }
@@ -399,7 +411,6 @@ class AzureNetworkClient extends AzureBaseClient {
 
   /**
    * Gets a virtual network object instance by name, or null if the virtual network does not exist
-   * @param creds the credentials to use when communicating with Azure subscription(s)
    * @param resourceGroupName name of the resource group to look in for a virtual network
    * @param virtualNetworkName name of the virtual network to get
    * @return virtual network instance, or null if it does not exist
@@ -413,7 +424,6 @@ class AzureNetworkClient extends AzureBaseClient {
 
   /**
    * Retrieve a collection of all virtual networks for a give set of credentials and the location
-   * @param creds the credentials to use when communicating to the Azure subscription(s)
    * @param region the location of the virtual network
    * @return a Collection of objects which represent a Virtual Network in Azure
    */
@@ -425,9 +435,15 @@ class AzureNetworkClient extends AzureBaseClient {
       def currentTime = System.currentTimeMillis()
       vnetList.each { item ->
         if (item.location == region) {
-          def vnet = getAzureVirtualNetworkDescription(item)
-          vnet.lastReadTime = currentTime
-          result += vnet
+          try {
+            def vnet = getAzureVirtualNetworkDescription(item)
+            vnet.lastReadTime = currentTime
+            result += vnet
+          } catch (RuntimeException re) {
+            // if we get a runtime exception here, log it but keep processing the rest of the
+            // virtual networks
+            log.error("Unable to process virtual network ${item.name}: ${re.message}")
+          }
         }
       }
     } catch (Exception e) {
@@ -460,7 +476,6 @@ class AzureNetworkClient extends AzureBaseClient {
 
   /**
    * get the dns name associated with a load balancer in Azure
-   * @param creds the credentials to use when communicating to the Azure subscription(s)
    * @param resourceGroupName name of the resource group where the load balancer was created (see application name and region/location)
    * @param loadBalancerName the name of the load balancer in Azure
    * @return the dns name of the given load balancer
