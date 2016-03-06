@@ -111,7 +111,7 @@ class CreateAzureServerGroupAtomicOperation implements AtomicOperation<Map> {
       virtualNetworkName,
       subnetName,
       nextSubnet,
-      description.securityGroup.name)
+      description.securityGroup?.name)
     description.credentials.networkClient.getSubnet(description.credentials, resourceGroupName, subnetName).resourceId
   }
 }
