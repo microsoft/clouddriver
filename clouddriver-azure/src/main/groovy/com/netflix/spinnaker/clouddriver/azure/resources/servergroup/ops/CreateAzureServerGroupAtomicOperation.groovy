@@ -63,7 +63,7 @@ class CreateAzureServerGroupAtomicOperation implements AtomicOperation<Map> {
 
       String subnetId = createSubnet(resourceGroupName, virtualNetworkName)
 
-        task.updateStatus(BASE_PHASE, "Deploying server group")
+      task.updateStatus(BASE_PHASE, "Deploying server group")
       DeploymentExtended deployment = description.credentials.resourceManagerClient.createResourceFromTemplate(description.credentials,
         AzureServerGroupResourceTemplate.getTemplate(description),
         resourceGroupName,
