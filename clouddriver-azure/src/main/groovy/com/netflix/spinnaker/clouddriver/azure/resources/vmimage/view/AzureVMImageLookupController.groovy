@@ -23,6 +23,7 @@ import com.netflix.spinnaker.cats.cache.RelationshipCacheFilter
 import com.netflix.spinnaker.clouddriver.azure.AzureCloudProvider
 import com.netflix.spinnaker.clouddriver.azure.resources.common.cache.Keys
 import com.netflix.spinnaker.clouddriver.azure.resources.vmimage.model.AzureCustomVMImage
+import com.netflix.spinnaker.clouddriver.azure.resources.vmimage.model.AzureNamedImage
 import com.netflix.spinnaker.clouddriver.azure.resources.vmimage.model.AzureVMImage
 import com.netflix.spinnaker.clouddriver.azure.security.AzureNamedAccountCredentials
 import com.netflix.spinnaker.clouddriver.security.AccountCredentialsProvider
@@ -253,19 +254,6 @@ class AzureVMImageLookupController {
   @ResponseStatus(value = HttpStatus.NOT_FOUND, reason = 'Image not found')
   @InheritConstructors
   private static class ImageNotFoundException extends RuntimeException { }
-
-  private static class AzureNamedImage {
-    String imageName
-    Boolean iscustom = false
-    String publisher
-    String offer
-    String sku
-    String version
-    String account
-    String region
-    String uri
-    String ostype
-  }
 
   private static class LookupOptions {
     String q
