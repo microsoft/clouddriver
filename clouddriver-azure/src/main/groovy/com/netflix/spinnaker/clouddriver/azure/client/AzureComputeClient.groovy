@@ -148,7 +148,8 @@ public class AzureComputeClient extends AzureBaseClient {
       sg.lastReadTime = System.currentTimeMillis()
       return sg
     } catch (CloudException e) {
-      log.error("Exception encountered retrieving serverGroup: ${serverGroupName}", e)
+      // treat exception as a http 404 return (resource not found)
+      log.warn("ServerGroup: ${e.message} (${serverGroupName} was not found?)")
     }
     null
   }

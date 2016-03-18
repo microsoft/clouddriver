@@ -65,7 +65,7 @@ class AzureServerGroupNameResolver extends AbstractServerGroupNameResolver {
       new AbstractServerGroupNameResolver.TakenSlot(
         serverGroupName: it.name,
         sequence       : Names.parseName(it.name).sequence,
-        createdTime    : new Date(it.createdTime)
+        createdTime    : new Date(it.lastReadTime)
       )
     }
   }
