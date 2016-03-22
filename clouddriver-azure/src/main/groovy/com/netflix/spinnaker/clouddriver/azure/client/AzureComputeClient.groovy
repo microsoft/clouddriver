@@ -21,6 +21,7 @@ import com.microsoft.azure.credentials.ApplicationTokenCredentials
 import com.microsoft.azure.management.compute.ComputeManagementClient
 import com.microsoft.azure.management.compute.ComputeManagementClientImpl
 import com.microsoft.azure.management.compute.models.VirtualMachineScaleSet
+import com.microsoft.rest.ServiceResponse
 import com.netflix.spinnaker.clouddriver.azure.resources.servergroup.model.AzureServerGroupDescription
 import com.netflix.spinnaker.clouddriver.azure.resources.vmimage.model.AzureVMImage
 import groovy.transform.CompileStatic
@@ -153,4 +154,16 @@ public class AzureComputeClient extends AzureBaseClient {
     }
     null
   }
+
+  ServiceResponse<Void> destroyServerGroup(String resourceGroupName, String serverGroupName) {
+    try {
+      this.client.getVirtualMachineScaleSetsOperations()?.delete(resourceGroupName, serverGroupName)
+    } catch (CloudException e) {
+      // treat exception as a http 404 return (resource not found)
+      log.warn("ServerGroup: ${e.message} (${serverGroupName} was not found?)")
+    }
+
+    null
+  }
+
 }
