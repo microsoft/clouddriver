@@ -38,11 +38,6 @@ class AzureStorageClient extends AzureBaseClient {
 
   private final StorageManagementClient client
 
-  AzureStorageClient(String subscriptionId, StorageManagementClient client) {
-    super(subscriptionId)
-    this.client = client
-  }
-
   AzureStorageClient(String subscriptionId, ApplicationTokenCredentials credentials) {
     super(subscriptionId)
     this.client = this.initialize(credentials)
@@ -67,16 +62,28 @@ class AzureStorageClient extends AzureBaseClient {
    * @throws RuntimeException Throws RuntimeException if operation response indicates failure
    * @return a ServiceResponse object
    */
-  ServiceResponse deleteStorageAccount(String resourceGroupName, String storageName) {
-    //This will throw an exception if the it fails. If it returns then the call was successful
-    //Log the error Let it bubble up to the caller to handle as they see fit
-    try {
-      client.getStorageAccountsOperations().delete(resourceGroupName, storageName)
-    } catch (Exception e) {
-      // Add something to the log to show that the storage account deletion failed then rethrow the exception
-      log.error("Unable to delete storage account ${storageName} in Resource Group ${resourceGroupName}")
-      throw e
+  ServiceResponse<Void> deleteStorageAccount(String resourceGroupName, String storageName) {
+    ServiceResponse<Void> result = null
+    // The API call might return a timout exception or some other Azure CloudException that is not
+    //   related to the operation we are trying to execute; retry couple of times and if the final
+    //   retry fails then rethrow
+    long operationRetry = 0
+    while (operationRetry < AZURE_ATOMICOPERATION_RETRY) {
+      try {
+        operationRetry ++
+        result = client.getStorageAccountsOperations().delete(resourceGroupName, storageName)
+        operationRetry = AZURE_ATOMICOPERATION_RETRY
+      } catch (Exception e) {
+        log.warn("Delete storage account ${storageName}: ${e.message}")
+        if (operationRetry >= AZURE_ATOMICOPERATION_RETRY) {
+          // Add something to the log to show that the storage account deletion failed then rethrow the exception
+          log.error("Unable to delete storage account ${storageName} in Resource Group ${resourceGroupName}")
+          throw e
+        }
+      }
     }
+
+    result
   }
 
   /**

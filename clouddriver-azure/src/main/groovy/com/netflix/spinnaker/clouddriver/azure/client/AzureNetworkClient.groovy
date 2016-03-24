@@ -184,13 +184,44 @@ class AzureNetworkClient extends AzureBaseClient {
     def loadBalancer = client.getLoadBalancersOperations().get(resourceGroupName, loadBalancerName, null).body
 
     if (loadBalancer.frontendIPConfigurations.size() != 1) {
-      throw new RuntimeException("Unexpected number of public IP addresses associated with the load balancer (should be only one)!")
+      throw new RuntimeException("Unexpected number of public IP addresses associated with the load balancer (should always be only one)!")
     }
 
     def publicIpAddressName = AzureUtilities.getResourceNameFromID(loadBalancer.frontendIPConfigurations.first().getPublicIPAddress().id)
-    client.getLoadBalancersOperations().delete(resourceGroupName, loadBalancerName)
 
-    client.getPublicIPAddressesOperations().delete(resourceGroupName, publicIpAddressName)
+    ServiceResponse<Void> result = null
+    // The API call might return a timout exception or some other Azure CloudException that is not
+    //   related to the operation we are trying to execute; retry couple of times and if the final
+    //   retry fails then rethrow
+    long operationRetry = 0
+    while (operationRetry < AZURE_ATOMICOPERATION_RETRY) {
+      try {
+        operationRetry ++
+        result = client.getLoadBalancersOperations().delete(resourceGroupName, loadBalancerName)
+        operationRetry = AZURE_ATOMICOPERATION_RETRY
+      } catch (Exception e) {
+        log.warn("Delete Load Balancer ${loadBalancerName}: ${e.message}")
+        if (operationRetry >= AZURE_ATOMICOPERATION_RETRY) {
+          throw e
+        }
+      }
+    }
+
+    operationRetry = 0
+    while (operationRetry < AZURE_ATOMICOPERATION_RETRY) {
+      try {
+        operationRetry ++
+        result = client.getPublicIPAddressesOperations().delete(resourceGroupName, publicIpAddressName)
+        operationRetry = AZURE_ATOMICOPERATION_RETRY
+      } catch (CloudException e) {
+        log.warn("Delete Public IP ${publicIpAddressName}: ${e.message}")
+        if (operationRetry >= AZURE_ATOMICOPERATION_RETRY) {
+          throw e
+        }
+      }
+    }
+
+    result
   }
 
   /**
@@ -281,16 +312,28 @@ class AzureNetworkClient extends AzureBaseClient {
    * @throws RuntimeException Throws RuntimeException if operation response indicates failure
    * @return a ServiceResponse object
    */
-  ServiceResponse deleteSubnet(String resourceGroupName, String virtualNetworkName, String subnetName) {
-    //This will throw an exception if the it fails. If it returns then the call was successful
-    //Log the error Let it bubble up to the caller to handle as they see fit
-    try {
-      client.getSubnetsOperations().delete(resourceGroupName, virtualNetworkName, subnetName)
-    } catch (Exception e) {
-      // Add something to the log to show that the subnet deletion failed then rethrow the exception
-      log.error("Unable to delete subnet ${subnetName} in Resource Group ${resourceGroupName}")
-      throw e
+  ServiceResponse<Void> deleteSubnet(String resourceGroupName, String virtualNetworkName, String subnetName) {
+    ServiceResponse<Void> result = null
+    // The API call might return a timout exception or some other Azure CloudException that is not
+    //   related to the operation we are trying to execute; retry couple of times and if the final
+    //   retry fails then rethrow
+    long operationRetry = 0
+    while (operationRetry < AZURE_ATOMICOPERATION_RETRY) {
+      try {
+        operationRetry ++
+        result = client.getSubnetsOperations().delete(resourceGroupName, virtualNetworkName, subnetName)
+        operationRetry = AZURE_ATOMICOPERATION_RETRY
+      } catch (Exception e) {
+        log.warn("Delete subnet ${subnetName}: ${e.message}")
+        if (operationRetry >= AZURE_ATOMICOPERATION_RETRY) {
+          // Add something to the log to show that the subnet deletion failed then rethrow the exception
+          log.error("Unable to delete subnet ${subnetName} in Resource Group ${resourceGroupName}")
+          throw e
+        }
+      }
     }
+
+    result
   }
 
   private void addSecurityGroupToSubnet(String resourceGroupName, String securityGroupName, Subnet subnet) {

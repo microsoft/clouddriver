@@ -29,6 +29,7 @@ import groovy.util.logging.Slf4j
 @CompileStatic
 public abstract class AzureBaseClient {
   final String subscriptionId
+  final long AZURE_ATOMICOPERATION_RETRY = 5
 
   static ObjectMapper mapper
 

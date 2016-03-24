@@ -156,14 +156,25 @@ public class AzureComputeClient extends AzureBaseClient {
   }
 
   ServiceResponse<Void> destroyServerGroup(String resourceGroupName, String serverGroupName) {
-    try {
-      this.client.getVirtualMachineScaleSetsOperations()?.delete(resourceGroupName, serverGroupName)
-    } catch (CloudException e) {
-      // treat exception as a http 404 return (resource not found)
-      log.warn("ServerGroup: ${e.message} (${serverGroupName} was not found?)")
+    ServiceResponse<Void> result = null
+    // The API call might return a timout exception or some other Azure CloudException that is not
+    //   related to the operation we are trying to execute; retry couple of times and if the final
+    //   retry fails then rethrow
+    long operationRetry = 0
+    while (operationRetry < AZURE_ATOMICOPERATION_RETRY) {
+      try {
+        operationRetry ++
+        result = this.client.getVirtualMachineScaleSetsOperations()?.delete(resourceGroupName, serverGroupName)
+        operationRetry = AZURE_ATOMICOPERATION_RETRY
+      } catch (Exception e) {
+        log.warn("Delete ServerGroup ${serverGroupName}: ${e.message}")
+        if (operationRetry >= AZURE_ATOMICOPERATION_RETRY) {
+          throw e
+        }
+      }
     }
 
-    null
+    result
   }
 
 }

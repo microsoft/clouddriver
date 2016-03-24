@@ -18,7 +18,6 @@ package com.netflix.spinnaker.clouddriver.azure.resources.servergroup.ops
 
 import com.netflix.frigga.Names
 import com.netflix.spinnaker.clouddriver.azure.common.AzureUtilities
-import com.netflix.spinnaker.clouddriver.azure.resources.securitygroup.model.AzureSecurityGroupDescription
 import com.netflix.spinnaker.clouddriver.azure.resources.servergroup.model.AzureServerGroupDescription
 import com.netflix.spinnaker.clouddriver.data.task.Task
 import com.netflix.spinnaker.clouddriver.data.task.TaskRepository
@@ -27,7 +26,7 @@ import com.netflix.spinnaker.clouddriver.azure.resources.servergroup.model.Destr
 import com.netflix.spinnaker.clouddriver.orchestration.AtomicOperationException
 
 class DestroyAzureServerGroupAtomicOperation implements AtomicOperation<Void> {
-  private static final String BASE_PHASE = "DELETE_LOAD_BALANCER"
+  private static final String BASE_PHASE = "DESTROY_SERVER_GROUP"
 
   private static Task getTask() {
     TaskRepository.threadLocalTask.get()
