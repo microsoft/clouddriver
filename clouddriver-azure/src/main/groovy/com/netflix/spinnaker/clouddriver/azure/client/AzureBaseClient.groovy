@@ -53,4 +53,8 @@ public abstract class AzureBaseClient {
     new ApplicationTokenCredentials(clientId, tenantId, secret, AzureEnvironment.AZURE)
   }
 
+  static Boolean resourceNotFound(int responseStatusCode) {
+    responseStatusCode == HttpURLConnection.HTTP_NO_CONTENT || responseStatusCode == HttpURLConnection.HTTP_NOT_FOUND
+  }
+
 }
