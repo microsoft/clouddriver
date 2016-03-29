@@ -16,18 +16,17 @@
 
 package com.netflix.spinnaker.clouddriver.kubernetes.api
 
-import com.netflix.frigga.Names
 import com.netflix.spinnaker.clouddriver.kubernetes.deploy.KubernetesUtil
-import com.netflix.spinnaker.clouddriver.kubernetes.deploy.description.loadbalancer.KubernetesNamedServicePort
-import com.netflix.spinnaker.clouddriver.kubernetes.deploy.description.loadbalancer.KubernetesLoadBalancerDescription
-import com.netflix.spinnaker.clouddriver.kubernetes.deploy.description.servergroup.*
+import com.netflix.spinnaker.clouddriver.kubernetes.deploy.exception.KubernetesOperationException
+import groovy.util.logging.Slf4j
 import io.fabric8.kubernetes.api.model.*
 import io.fabric8.kubernetes.api.model.extensions.Ingress
 import io.fabric8.kubernetes.client.KubernetesClient
+import io.fabric8.kubernetes.client.KubernetesClientException
 
-import java.awt.image.ReplicateScaleFilter
 import java.util.concurrent.TimeUnit
 
+@Slf4j
 class KubernetesApiAdaptor {
   KubernetesClient client
 
@@ -66,323 +65,224 @@ class KubernetesApiAdaptor {
   }
 
   Ingress createIngress(String namespace, Ingress ingress) {
-    client.extensions().ingress().inNamespace(namespace).create(ingress)
+    try {
+      client.extensions().ingress().inNamespace(namespace).create(ingress)
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Create Ingress", e)
+    }
   }
 
   Ingress replaceIngress(String namespace, String name, Ingress ingress) {
-    client.extensions().ingress().inNamespace(namespace).withName(name).replace(ingress)
+    try {
+      client.extensions().ingress().inNamespace(namespace).withName(name).replace(ingress)
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Replace Ingress", e)
+    }
   }
 
   Ingress getIngress(String namespace, String name) {
-    client.extensions().ingress().inNamespace(namespace).withName(name).get()
+    try {
+      client.extensions().ingress().inNamespace(namespace).withName(name).get()
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Get Ingress", e)
+    }
   }
 
   boolean deleteIngress(String namespace, String name) {
-    client.extensions().ingress().inNamespace(namespace).withName(name).delete()
+    try {
+      client.extensions().ingress().inNamespace(namespace).withName(name).delete()
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Delete Ingress", e)
+    }
   }
 
   List<Ingress> getIngresses(String namespace) {
-    client.extensions().ingress().inNamespace(namespace).list().items
+    try {
+      client.extensions().ingress().inNamespace(namespace).list().items
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Get Ingresses", e)
+    }
   }
 
   List<ReplicationController> getReplicationControllers(String namespace) {
-    client.replicationControllers().inNamespace(namespace).list().items
+    try {
+      client.replicationControllers().inNamespace(namespace).list().items
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Get Replication Controllers", e)
+    }
   }
 
   List<Pod> getPods(String namespace, String replicationControllerName) {
-    client.pods().inNamespace(namespace).withLabel(KubernetesUtil.REPLICATION_CONTROLLER_LABEL, replicationControllerName).list().items
+    try {
+      client.pods().inNamespace(namespace).withLabel(KubernetesUtil.REPLICATION_CONTROLLER_LABEL, replicationControllerName).list().items
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Get Pods", e)
+    }
   }
 
   Pod getPod(String namespace, String name) {
-    client.pods().inNamespace(namespace).withName(name).get()
+    try {
+      client.pods().inNamespace(namespace).withName(name).get()
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Get Pod", e)
+    }
   }
 
   boolean deletePod(String namespace, String name) {
-    client.pods().inNamespace(namespace).withName(name).delete()
+    try {
+      client.pods().inNamespace(namespace).withName(name).delete()
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Delete Pod", e)
+    }
   }
 
   List<Pod> getPods(String namespace) {
-    client.pods().inNamespace(namespace).list().items
+    try {
+      client.pods().inNamespace(namespace).list().items
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Get Pods", e)
+    }
   }
 
   ReplicationController getReplicationController(String namespace, String serverGroupName) {
-    client.replicationControllers().inNamespace(namespace).withName(serverGroupName).get()
+    try {
+      client.replicationControllers().inNamespace(namespace).withName(serverGroupName).get()
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Get Replication Controller", e)
+    }
   }
 
   ReplicationController createReplicationController(String namespace, ReplicationController replicationController) {
-    client.replicationControllers().inNamespace(namespace).create(replicationController)
+    try {
+      client.replicationControllers().inNamespace(namespace).create(replicationController)
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Create Replication Controller", e)
+    }
   }
 
   ReplicationController resizeReplicationController(String namespace, String name, int size) {
-    client.replicationControllers().inNamespace(namespace).withName(name).scale(size)
+    try {
+      client.replicationControllers().inNamespace(namespace).withName(name).scale(size)
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Resize Replication Controller", e)
+    }
   }
 
   boolean hardDestroyReplicationController(String namespace, String name) {
-    client.replicationControllers().inNamespace(namespace).withName(name).delete()
+    try {
+      client.replicationControllers().inNamespace(namespace).withName(name).delete()
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Hard Destroy Replication Controller", e)
+    }
   }
 
   void togglePodLabels(String namespace, String name, List<String> keys, String value) {
-    def edit = client.pods().inNamespace(namespace).withName(name).edit().editMetadata()
+    try {
+      def edit = client.pods().inNamespace(namespace).withName(name).edit().editMetadata()
 
-    keys.each {
-      edit.removeFromLabels(it)
-      edit.addToLabels(it, value)
+      keys.each {
+        edit.removeFromLabels(it)
+        edit.addToLabels(it, value)
+      }
+
+      edit.endMetadata().done()
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Toggle Pod Labels", e)
     }
-
-    edit.endMetadata().done()
   }
 
   ReplicationController toggleReplicationControllerSpecLabels(String namespace, String name, List<String> keys, String value) {
-    def edit = client.replicationControllers().inNamespace(namespace).withName(name).cascading(false).edit().editSpec().editTemplate().editMetadata()
+    try {
+      def edit = client.replicationControllers().inNamespace(namespace).withName(name).cascading(false).edit().editSpec().editTemplate().editMetadata()
 
-    keys.each {
-      edit.removeFromLabels(it)
-      edit.addToLabels(it, value)
+      keys.each {
+        edit.removeFromLabels(it)
+        edit.addToLabels(it, value)
+      }
+
+      edit.endMetadata().endTemplate().endSpec().done()
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Toggle Replication Controller Labels", e)
     }
-
-    edit.endMetadata().endTemplate().endSpec().done()
   }
 
   Service getService(String namespace, String service) {
-    client.services().inNamespace(namespace).withName(service).get()
+    try {
+      client.services().inNamespace(namespace).withName(service).get()
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Get Service", e)
+    }
   }
 
   Service createService(String namespace, Service service) {
-    client.services().inNamespace(namespace).create(service)
+    try {
+      client.services().inNamespace(namespace).create(service)
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Create Service", e)
+    }
   }
 
   boolean deleteService(String namespace, String name) {
-    client.services().inNamespace(namespace).withName(name).delete()
+    try {
+      client.services().inNamespace(namespace).withName(name).delete()
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Delete Service", e)
+    }
   }
 
   List<Service> getServices(String namespace) {
-    client.services().inNamespace(namespace).list().items
+    try {
+      client.services().inNamespace(namespace).list().items
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Get Services", e)
+    }
   }
 
   Service replaceService(String namespace, String name, Service service) {
-    client.services().inNamespace(namespace).withName(name).replace(service)
+    try {
+      client.services().inNamespace(namespace).withName(name).replace(service)
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Replace Service", e)
+    }
   }
 
   Secret getSecret(String namespace, String secret) {
-    client.secrets().inNamespace(namespace).withName(secret).get()
+    try {
+      client.secrets().inNamespace(namespace).withName(secret).get()
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Get Secret", e)
+    }
   }
 
   Boolean deleteSecret(String namespace, String secret) {
-    client.secrets().inNamespace(namespace).withName(secret).delete()
+    try {
+      client.secrets().inNamespace(namespace).withName(secret).delete()
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Delete Secret", e)
+    }
   }
 
   Secret createSecret(String namespace, Secret secret) {
-    client.secrets().inNamespace(namespace).create(secret)
+    try {
+      client.secrets().inNamespace(namespace).create(secret)
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Create Secret", e)
+    }
   }
 
   Namespace getNamespace(String namespace) {
-    client.namespaces().withName(namespace).get()
+    try {
+      client.namespaces().withName(namespace).get()
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Get Namespace", e)
+    }
   }
 
   Namespace createNamespace(Namespace namespace) {
-    client.namespaces().create(namespace)
-  }
-
-  static KubernetesLoadBalancerDescription fromService(Service service) {
-    if (!service) {
-      return null
+    try {
+      client.namespaces().create(namespace)
+    } catch (KubernetesClientException e) {
+      throw new KubernetesOperationException("Create Namespace", e)
     }
-
-    def loadBalancerDescription = new KubernetesLoadBalancerDescription()
-
-    loadBalancerDescription.name = service.metadata.name
-    def parse = Names.parseName(loadBalancerDescription.name)
-    loadBalancerDescription.app = parse.app
-    loadBalancerDescription.stack = parse.stack
-    loadBalancerDescription.detail = parse.detail
-    loadBalancerDescription.namespace = service.metadata.namespace
-
-    loadBalancerDescription.clusterIp = service.spec.clusterIP
-    loadBalancerDescription.loadBalancerIp = service.spec.loadBalancerIP
-    loadBalancerDescription.sessionAffinity = service.spec.sessionAffinity
-    loadBalancerDescription.serviceType = service.spec.type
-
-    loadBalancerDescription.externalIps = service.spec.externalIPs ?: []
-    loadBalancerDescription.ports = service.spec.ports?.collect { port ->
-      new KubernetesNamedServicePort(
-          name: port.name,
-          protocol: port.protocol,
-          port: port.port ?: 0,
-          targetPort: port.targetPort?.intVal ?: 0,
-          nodePort: port.nodePort ?: 0
-      )
-    }
-
-    return loadBalancerDescription
-  }
-
-  static KubernetesContainerDescription fromContainer(Container container) {
-    if (!container) {
-      return null
-    }
-
-    def containerDescription = new KubernetesContainerDescription()
-    containerDescription.name = container.name
-    containerDescription.imageDescription = KubernetesUtil.buildImageDescription(container.image)
-
-    container.resources?.with {
-      containerDescription.limits = limits?.cpu?.amount || limits?.memory?.amount ?
-        new KubernetesResourceDescription(
-          cpu: limits?.cpu?.amount,
-          memory: limits?.memory?.amount
-        ) : null
-
-      containerDescription.requests = requests?.cpu?.amount || requests?.memory?.amount ?
-        new KubernetesResourceDescription(
-           cpu: requests?.cpu?.amount,
-           memory: requests?.memory?.amount
-        ) : null
-    }
-
-    containerDescription.ports = container.ports?.collect {
-      def port = new KubernetesContainerPort()
-      port.hostIp = it?.hostIP
-      if (it?.hostPort) {
-        port.hostPort = it?.hostPort?.intValue()
-      }
-      if (it?.containerPort) {
-        port.containerPort = it?.containerPort?.intValue()
-      }
-      port.name = it?.name
-      port.protocol = it?.protocol
-
-      return port
-    }
-
-    containerDescription.livenessProbe = fromProbe(container?.livenessProbe)
-    containerDescription.readinessProbe = fromProbe(container?.readinessProbe)
-
-    containerDescription.envVars = container?.env?.collect { envVar ->
-      new KubernetesEnvVar(name: envVar.name, value: envVar.value)
-    }
-
-    containerDescription.volumeMounts = container?.volumeMounts?.collect { volumeMount ->
-      new KubernetesVolumeMount(name: volumeMount.name, readOnly: volumeMount.readOnly, mountPath: volumeMount.mountPath)
-    }
-
-    containerDescription.args = container?.args ?: []
-    containerDescription.command = container?.command ?: []
-
-    return containerDescription
-  }
-
-  static DeployKubernetesAtomicOperationDescription fromReplicationController(ReplicationController replicationController) {
-    def deployDescription = new DeployKubernetesAtomicOperationDescription()
-    def parsedName = Names.parseName(replicationController?.metadata?.name)
-
-    deployDescription.application = parsedName?.app
-    deployDescription.stack = parsedName?.stack
-    deployDescription.freeFormDetails = parsedName?.detail
-    deployDescription.loadBalancers = KubernetesUtil?.getDescriptionLoadBalancers(replicationController)
-    deployDescription.namespace = replicationController?.metadata?.namespace
-    deployDescription.targetSize = replicationController?.spec?.replicas
-    deployDescription.securityGroups = []
-
-    deployDescription.volumeSources = replicationController?.spec?.template?.spec?.volumes?.collect { volume ->
-      def res = new KubernetesVolumeSource(name: volume.name)
-
-      if (volume.emptyDir) {
-        res.type = KubernetesVolumeSourceType.EMPTYDIR
-        def medium = volume.emptyDir.medium
-        def mediumType
-
-        if (medium == "Memory") {
-          mediumType = KubernetesStorageMediumType.MEMORY
-        } else {
-          mediumType = KubernetesStorageMediumType.DEFAULT
-        }
-
-        res.emptyDir = new KubernetesEmptyDir(medium: mediumType)
-      } else if (volume.hostPath) {
-        res.type = KubernetesVolumeSourceType.HOSTPATH
-        res.hostPath = new KubernetesHostPath(path: volume.hostPath.path)
-      } else if (volume.persistentVolumeClaim) {
-        res.type = KubernetesVolumeSourceType.PERSISTENTVOLUMECLAIM
-        res.persistentVolumeClaim = new KubernetesPersistentVolumeClaim(claimName: volume.persistentVolumeClaim.claimName,
-                                                                        readOnly: volume.persistentVolumeClaim.readOnly)
-      } else if (volume.secret) {
-        res.type = KubernetesVolumeSourceType.SECRET
-        res.secret = new KubernetesSecretVolumeSource(secretName: volume.secret.secretName)
-      } else {
-        res.type = KubernetesVolumeSourceType.UNSUPPORTED
-      }
-
-      return res
-    } ?: []
-
-    deployDescription.containers = replicationController?.spec?.template?.spec?.containers?.collect {
-      fromContainer(it)
-    }
-
-    return deployDescription
-  }
-
-  static KubernetesProbe fromProbe(Probe probe) {
-    if (!probe) {
-      return null
-    }
-
-    def kubernetesProbe = new KubernetesProbe()
-    kubernetesProbe.failureThreshold = probe.failureThreshold ?: 0
-    kubernetesProbe.successThreshold = probe.successThreshold ?: 0
-    kubernetesProbe.timeoutSeconds = probe.timeoutSeconds ?: 0
-    kubernetesProbe.periodSeconds = probe.periodSeconds ?: 0
-    kubernetesProbe.initialDelaySeconds = probe.initialDelaySeconds ?: 0
-    kubernetesProbe.handler = new KubernetesHandler()
-
-    if (probe.exec) {
-      kubernetesProbe.handler.execAction = fromExecAction(probe.exec)
-      kubernetesProbe.handler.type = KubernetesHandlerType.EXEC
-    }
-
-    if (probe.tcpSocket) {
-      kubernetesProbe.handler.tcpSocketAction = fromTcpSocketAction(probe.tcpSocket)
-      kubernetesProbe.handler.type = KubernetesHandlerType.TCP
-    }
-
-    if (probe.httpGet) {
-      kubernetesProbe.handler.httpGetAction = fromHttpGetAction(probe.httpGet)
-      kubernetesProbe.handler.type = KubernetesHandlerType.HTTP
-    }
-
-    return kubernetesProbe
-  }
-
-  static KubernetesExecAction fromExecAction(ExecAction exec) {
-    if (!exec) {
-      return null
-    }
-
-    def kubernetesExecAction = new KubernetesExecAction()
-    kubernetesExecAction.commands = exec.command
-    return kubernetesExecAction
-  }
-
-  static KubernetesTcpSocketAction fromTcpSocketAction(TCPSocketAction tcpSocket) {
-    if (!tcpSocket) {
-      return null
-    }
-
-    def kubernetesTcpSocketAction = new KubernetesTcpSocketAction()
-    kubernetesTcpSocketAction.port = tcpSocket.port?.intVal
-    return kubernetesTcpSocketAction
-  }
-
-  static KubernetesHttpGetAction fromHttpGetAction(HTTPGetAction httpGet) {
-    if (!httpGet) {
-      return null
-    }
-
-    def kubernetesHttpGetAction = new KubernetesHttpGetAction()
-    kubernetesHttpGetAction.host = httpGet.host
-    kubernetesHttpGetAction.path = httpGet.path
-    kubernetesHttpGetAction.port = httpGet.port?.intVal
-    kubernetesHttpGetAction.uriScheme = httpGet.scheme
-    return kubernetesHttpGetAction
   }
 }
