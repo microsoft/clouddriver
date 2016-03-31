@@ -18,6 +18,7 @@ package com.netflix.spinnaker.clouddriver.aws.provider.agent
 
 import com.amazonaws.services.ec2.model.DescribeInstancesRequest
 import com.amazonaws.services.ec2.model.DescribeReservedInstancesRequest
+import com.amazonaws.services.ec2.model.ReservedInstances
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.core.JsonGenerator
@@ -31,49 +32,55 @@ import com.netflix.spinnaker.cats.agent.AgentDataType
 import com.netflix.spinnaker.cats.agent.CacheResult
 import com.netflix.spinnaker.cats.agent.CachingAgent
 import com.netflix.spinnaker.cats.agent.DefaultCacheResult
+import com.netflix.spinnaker.cats.cache.Cache
 import com.netflix.spinnaker.cats.cache.CacheData
 import com.netflix.spinnaker.cats.provider.ProviderCache
+import com.netflix.spinnaker.clouddriver.aws.data.Keys
 import com.netflix.spinnaker.clouddriver.aws.security.AmazonClientProvider
 import com.netflix.spinnaker.clouddriver.aws.security.AmazonCredentials
 import com.netflix.spinnaker.clouddriver.aws.security.NetflixAmazonCredentials
 import com.netflix.spinnaker.clouddriver.aws.model.AmazonReservationReport
 import com.netflix.spinnaker.clouddriver.aws.provider.AwsProvider
+import com.netflix.spinnaker.clouddriver.cache.CustomScheduledAgent
 import groovy.util.logging.Slf4j
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.ApplicationContext
+import rx.Observable
+import rx.Scheduler
 
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 import static com.netflix.spinnaker.cats.agent.AgentDataType.Authority.AUTHORITATIVE
 import static com.netflix.spinnaker.clouddriver.aws.data.Keys.Namespace.RESERVATION_REPORTS
+import static com.netflix.spinnaker.clouddriver.aws.data.Keys.Namespace.RESERVED_INSTANCES
 
 @Slf4j
-class ReservationReportCachingAgent implements CachingAgent {
-  private static final Collection<AgentDataType> types = Collections.unmodifiableCollection([
+class ReservationReportCachingAgent implements CachingAgent, CustomScheduledAgent {
+  private static final long DEFAULT_POLL_INTERVAL_MILLIS = TimeUnit.MINUTES.toMillis(1)
+  private static final long DEFAULT_TIMEOUT_MILLIS = TimeUnit.MINUTES.toMillis(5)
+
+  final Collection<AgentDataType> types = Collections.unmodifiableCollection([
     AUTHORITATIVE.forType(RESERVATION_REPORTS.ns)
   ])
 
-  @Override
-  String getProviderName() {
-    AwsProvider.PROVIDER_NAME
-  }
+  private final Scheduler scheduler
+  private final ApplicationContext ctx
+  private Cache cacheView
 
-  @Override
-  String getAgentType() {
-    "${ReservationReportCachingAgent.simpleName}"
-  }
-
-  @Override
-  Collection<AgentDataType> getProvidedDataTypes() {
-    types
-  }
 
   final AmazonClientProvider amazonClientProvider
   final Collection<NetflixAmazonCredentials> accounts
   final ObjectMapper objectMapper
   final AccountReservationDetailSerializer accountReservationDetailSerializer
 
+
   ReservationReportCachingAgent(AmazonClientProvider amazonClientProvider,
                                 Collection<NetflixAmazonCredentials> accounts,
-                                ObjectMapper objectMapper) {
+                                ObjectMapper objectMapper,
+                                Scheduler scheduler,
+                                ApplicationContext ctx) {
     this.amazonClientProvider = amazonClientProvider
     this.accounts = accounts
 
@@ -82,6 +89,18 @@ class ReservationReportCachingAgent implements CachingAgent {
     module.addSerializer(AmazonReservationReport.AccountReservationDetail.class, accountReservationDetailSerializer)
 
     this.objectMapper = objectMapper.copy().enable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS).registerModule(module)
+    this.scheduler = scheduler
+    this.ctx = ctx
+  }
+
+  @Override
+  long getPollIntervalMillis() {
+    return DEFAULT_POLL_INTERVAL_MILLIS
+  }
+
+  @Override
+  long getTimeoutMillis() {
+    return DEFAULT_TIMEOUT_MILLIS
   }
 
   static class MutableCacheData implements CacheData {
@@ -104,96 +123,54 @@ class ReservationReportCachingAgent implements CachingAgent {
     }
   }
 
+  @Override
+  String getProviderName() {
+    AwsProvider.PROVIDER_NAME
+  }
+
+  @Override
+  String getAgentType() {
+    "${ReservationReportCachingAgent.simpleName}"
+  }
+
+  @Override
+  Collection<AgentDataType> getProvidedDataTypes() {
+    types
+  }
+
   public Collection<NetflixAmazonCredentials> getAccounts() {
     return accounts;
   }
 
   @Override
   CacheResult loadData(ProviderCache providerCache) {
+    long startTime = System.currentTimeMillis()
     log.info("Describing items in ${agentType}")
-    Map<String, AmazonReservationReport.OverallReservationDetail> reservations = [:].withDefault { String key ->
-      def (availabilityZone, operatingSystemType, instanceType) = key.split(":")
-      new AmazonReservationReport.OverallReservationDetail(
-        availabilityZone: availabilityZone,
-        os: AmazonReservationReport.OperatingSystemType.valueOf(operatingSystemType as String).name,
-        instanceType: instanceType,
-      )
-    }
 
-    def amazonReservationReport = new AmazonReservationReport(start: new Date())
+    ConcurrentHashMap<String, AmazonReservationReport.OverallReservationDetail> reservations = new ConcurrentHashMap<>()
+    Observable
+      .from(accounts.sort { it.name })
+      .flatMap({ credential ->
+        extractReservations(reservations, credential).subscribeOn(scheduler)
+    })
+      .observeOn(scheduler)
+      .toList()
+      .toBlocking()
+      .single()
+
+    def amazonReservationReport = new AmazonReservationReport(start: new Date(startTime), end: new Date())
     accounts.each { NetflixAmazonCredentials credentials ->
       amazonReservationReport.accounts << [
         accountId: credentials.accountId,
-        name: credentials.name,
-        regions: credentials.regions*.name
+        name     : credentials.name,
+        regions  : credentials.regions*.name
       ]
     }
 
-    Set<String> processedAccountIds = []
-    accounts.sort { it.name }.each { NetflixAmazonCredentials credentials ->
-      if (processedAccountIds.contains(credentials.accountId)) {
-        log.info("Already processed account (accountId: ${credentials.accountId} / ${credentials.name})")
-        return
-      }
-
-      credentials.regions.each { AmazonCredentials.AWSRegion region ->
-        log.info("Fetching reservation report for ${credentials.name}:${region.name}")
-
-        def amazonEC2 = amazonClientProvider.getAmazonEC2(credentials, region.name)
-        def reservedInstancesResult = amazonEC2.describeReservedInstances(new DescribeReservedInstancesRequest())
-        reservedInstancesResult.reservedInstances.findAll {
-          it.state.equalsIgnoreCase("active") &&
-          ["Heavy Utilization", "Partial Upfront", "All Upfront", "No Upfront"].contains(it.offeringType)
-        }.each {
-          def osType = operatingSystemType(it.productDescription)
-          def reservation = reservations["${it.availabilityZone}:${osType.name}:${it.instanceType}"]
-          reservation.totalReserved.addAndGet(it.instanceCount)
-
-          if (osType.isVpc) {
-            reservation.accounts[credentials.name].reservedVpc.addAndGet(it.instanceCount)
-          } else {
-            reservation.accounts[credentials.name].reserved.addAndGet(it.instanceCount)
-          }
-        }
-
-        def describeInstancesRequest = new DescribeInstancesRequest()
-        def allowedStates = ["pending", "running", "shutting-down", "stopping", "stopped"] as Set<String>
-        while (true) {
-          def result = amazonEC2.describeInstances(describeInstancesRequest)
-          result.reservations.each {
-            it.getInstances().each {
-              if (!allowedStates.contains(it.state.name.toLowerCase())) {
-                return
-              }
-
-              def osTypeName = operatingSystemType(it.platform ? "Windows" : "Linux/UNIX").name
-              def reservation = reservations["${it.placement.availabilityZone}:${osTypeName}:${it.instanceType}"]
-              reservation.totalUsed.incrementAndGet()
-
-              if (it.vpcId) {
-                reservation.accounts[credentials.name].usedVpc.incrementAndGet()
-              } else {
-                reservation.accounts[credentials.name].used.incrementAndGet()
-              }
-            }
-          }
-
-          if (result.nextToken) {
-            describeInstancesRequest.withNextToken(result.nextToken)
-          } else {
-            break
-          }
-        }
-      }
-
-      processedAccountIds << credentials.accountId
-    }
-
-    amazonReservationReport.end = new Date()
     amazonReservationReport.reservations = reservations.values().sort {
-      a,b -> a.availabilityZone <=> b.availabilityZone ?: a.instanceType <=> b.instanceType ?: a.os <=> b.os
+      a, b -> a.availabilityZone <=> b.availabilityZone ?: a.instanceType <=> b.instanceType ?: a.os <=> b.os
     }
-    log.info("Caching ${reservations.size()} items in ${agentType}")
+    log.info("Caching ${reservations.size()} items in ${agentType} took ${System.currentTimeMillis() - startTime}ms")
 
     // v1 is a legacy report that does not differentiate between vpc and non-vpc reserved instances
     accountReservationDetailSerializer.mergeVpcReservations = true
@@ -208,6 +185,87 @@ class ReservationReportCachingAgent implements CachingAgent {
         new MutableCacheData("v2", ["report": v2], [:])
       ]
     )
+  }
+
+  Observable extractReservations(ConcurrentHashMap<String, AmazonReservationReport.OverallReservationDetail> reservations,
+                                 NetflixAmazonCredentials credentials) {
+    def getReservation = { String availabilityZone, String operatingSystemType, String instanceType ->
+      def key = [availabilityZone, operatingSystemType, instanceType].join(":")
+      def newOverallReservationDetail = new AmazonReservationReport.OverallReservationDetail(
+        availabilityZone: availabilityZone,
+        os: AmazonReservationReport.OperatingSystemType.valueOf(operatingSystemType as String).name,
+        instanceType: instanceType
+      )
+
+      def existingOverallReservationDetail = reservations.putIfAbsent(key, newOverallReservationDetail)
+      if (existingOverallReservationDetail) {
+        return existingOverallReservationDetail
+      }
+
+      return newOverallReservationDetail
+    }
+
+    Observable
+      .from(credentials.regions)
+      .flatMap({ AmazonCredentials.AWSRegion region ->
+        log.info("Fetching reservation report for ${credentials.name}:${region.name}")
+
+        def amazonEC2 = amazonClientProvider.getAmazonEC2(credentials, region.name)
+
+        def cacheView = getCacheView()
+        def reservedInstances = cacheView.getAll(
+          RESERVED_INSTANCES.ns,
+          cacheView.filterIdentifiers(RESERVED_INSTANCES.ns, Keys.getReservedInstancesKey('*', credentials.name, region.name))
+        ).collect {
+          objectMapper.convertValue(it.attributes, ReservedInstanceDetails)
+        }
+
+        reservedInstances.findAll {
+          it.state.equalsIgnoreCase("active") &&
+            ["Heavy Utilization", "Partial Upfront", "All Upfront", "No Upfront"].contains(it.offeringType)
+        }.each {
+          def osType = operatingSystemType(it.productDescription)
+          def reservation = getReservation(it.availabilityZone, osType.name, it.instanceType)
+          reservation.totalReserved.addAndGet(it.instanceCount)
+
+          if (osType.isVpc) {
+            reservation.getAccount(credentials.name).reservedVpc.addAndGet(it.instanceCount)
+          } else {
+            reservation.getAccount(credentials.name).reserved.addAndGet(it.instanceCount)
+          }
+        }
+
+        def describeInstancesRequest = new DescribeInstancesRequest()
+        def allowedStates = ["pending", "running", "shutting-down", "stopping", "stopped"] as Set<String>
+        while (true) {
+          def result = amazonEC2.describeInstances(describeInstancesRequest)
+          result.reservations.each {
+            it.getInstances().each {
+              if (!allowedStates.contains(it.state.name.toLowerCase())) {
+                return
+              }
+
+              def osTypeName = operatingSystemType(it.platform ? "Windows" : "Linux/UNIX").name
+              def reservation = getReservation(it.placement.availabilityZone, osTypeName, it.instanceType)
+              reservation.totalUsed.incrementAndGet()
+
+              if (it.vpcId) {
+                reservation.getAccount(credentials.name).usedVpc.incrementAndGet()
+              } else {
+                reservation.getAccount(credentials.name).used.incrementAndGet()
+              }
+            }
+          }
+
+          if (result.nextToken) {
+            describeInstancesRequest.withNextToken(result.nextToken)
+          } else {
+            break
+          }
+        }
+
+      return Observable.empty()
+    })
   }
 
   static AmazonReservationReport.OperatingSystemType operatingSystemType(String productDescription) {
@@ -230,6 +288,13 @@ class ReservationReportCachingAgent implements CachingAgent {
     }
   }
 
+  private Cache getCacheView() {
+    if (!this.cacheView) {
+      this.cacheView = ctx.getBean(Cache)
+    }
+    this.cacheView
+  }
+
   static class AccountReservationDetailSerializer extends JsonSerializer<AmazonReservationReport.AccountReservationDetail> {
     ObjectMapper objectMapper = new ObjectMapper()
     boolean mergeVpcReservations
@@ -250,5 +315,14 @@ class ReservationReportCachingAgent implements CachingAgent {
 
       gen.writeObject(objectMapper.convertValue(value, Map))
     }
+  }
+
+  static class ReservedInstanceDetails {
+    String state
+    String offeringType
+    String productDescription
+    String availabilityZone
+    String instanceType
+    int instanceCount
   }
 }
