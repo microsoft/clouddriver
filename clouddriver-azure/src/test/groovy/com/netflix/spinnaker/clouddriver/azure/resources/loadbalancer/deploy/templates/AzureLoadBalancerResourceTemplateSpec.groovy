@@ -54,6 +54,7 @@ class AzureLoadBalancerResourceTemplateSpec extends Specification {
     description.probes.add(probe)
     description.securityGroup = "azuremasm-sg1"
     description.vnet = "azuremasm-vnet-westus"
+    description.subnet = "azuremasm-subnet-westus"
     description.loadBalancingRules = new ArrayList<AzureLoadBalancerDescription.AzureLoadBalancingRule>()
 
     AzureLoadBalancerDescription.AzureLoadBalancingRule rule = new AzureLoadBalancerDescription.AzureLoadBalancingRule()
@@ -129,7 +130,8 @@ class AzureLoadBalancerResourceTemplateSpec extends Specification {
       "detail" : "d11",
       "createdTime" : "1234567890",
       "securityGroup" : "azuremasm-sg1",
-      "vnet" : "azuremasm-vnet-westus"
+      "vnet" : "azuremasm-vnet-westus",
+      "subnet" : "azuremasm-subnet-westus"
     },
     "dependsOn" : [ "[concat('Microsoft.Network/publicIPAddresses/',variables('publicIPAddressName'))]" ],
     "properties" : {

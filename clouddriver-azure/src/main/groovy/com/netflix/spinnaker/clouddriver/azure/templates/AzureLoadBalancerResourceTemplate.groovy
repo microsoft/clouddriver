@@ -105,6 +105,7 @@ class AzureLoadBalancerResourceTemplate {
       if (description.serverGroup) tags.serverGroup = description.serverGroup
       if (description.securityGroup) tags.securityGroup = description.securityGroup
       if (description.vnet) tags.vnet = description.vnet
+      if (description.subnet) tags.subnet = description.subnet
 
       properties = new LoadBalancerProperties(description)
     }
