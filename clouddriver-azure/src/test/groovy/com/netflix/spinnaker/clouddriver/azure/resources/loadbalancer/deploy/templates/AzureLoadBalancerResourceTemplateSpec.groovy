@@ -94,13 +94,14 @@ class AzureLoadBalancerResourceTemplateSpec extends Specification {
     }
   },
   "variables" : {
+    "apiVersion" : "2015-05-01-preview",
     "loadBalancerName" : "azuremasm-st1-d11",
     "virtualNetworkName" : "vnet-azuremasm-westus",
     "publicIPAddressName" : "pip-azuremasm-st1-d11",
     "publicIPAddressType" : "Dynamic",
     "loadBalancerFrontEnd" : "fe-azuremasm-st1-d11",
     "loadBalancerBackEnd" : "be-azuremasm-st1-d11",
-    "dnsNameForLBIP" : "dns-azuremasm-st1-d11",
+    "dnsNameForLBIP" : "[concat('dns-, 'uniqueString(concat(resourceGroup().id, subscription().id, 'azuremasmst1d11')))]",
     "ipConfigName" : "ipc-azuremasm-st1-d11",
     "loadBalancerID" : "[resourceID('Microsoft.Network/loadBalancers',variables('loadBalancerName'))]",
     "publicIPAddressID" : "[resourceID('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]",
@@ -108,7 +109,7 @@ class AzureLoadBalancerResourceTemplateSpec extends Specification {
     "backendPoolID" : "[concat(variables('loadBalancerID'),'/backendAddressPools/',variables('loadBalancerBackEnd'))]"
   },
   "resources" : [ {
-    "apiVersion" : "2015-05-01-preview",
+    "apiVersion" : "[variables('apiVersion')]",
     "name" : "[variables('publicIPAddressName')]",
     "type" : "Microsoft.Network/publicIPAddresses",
     "location" : "[parameters('location')]",
@@ -120,7 +121,7 @@ class AzureLoadBalancerResourceTemplateSpec extends Specification {
       }
     }
   }, {
-    "apiVersion" : "2015-05-01-preview",
+    "apiVersion" : "[variables('apiVersion')]",
     "name" : "[variables('loadBalancerName')]",
     "type" : "Microsoft.Network/loadBalancers",
     "location" : "[parameters('location')]",
