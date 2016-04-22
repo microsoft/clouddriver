@@ -54,7 +54,6 @@ class PublicIpResource extends Resource{
     name = '''[variables('publicIPAddressName')]'''
     type = '''Microsoft.Network/publicIPAddresses'''
     location = '''[parameters('location')]'''
-    //properties = withDns ? new PublicIPPropertiesWithDns() : new PublicIPProperties()
   }
 }
 
