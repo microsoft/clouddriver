@@ -42,7 +42,7 @@ class AzureLoadBalancerResourceTemplate {
       parameters = new LoadBalancerParameters()
       variables = new LoadBalancerTemplateVariables(description)
 
-      resources.add(new PublicIpResource())
+      resources.add(new PublicIpResource(properties: new PublicIPPropertiesWithDns()))
 
       LoadBalancer lb = new LoadBalancer(description)
       lb.addDependency(resources[0])

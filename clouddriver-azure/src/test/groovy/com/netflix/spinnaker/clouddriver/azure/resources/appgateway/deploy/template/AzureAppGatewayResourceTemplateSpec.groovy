@@ -141,7 +141,7 @@ class AzureAppGatewayResourceTemplateSpec extends Specification {
     "appGwName" : "testappgw-lb1-d1",
     "virtualNetworkName" : "vnet-testappgw-westus",
     "publicIPAddressName" : "pip-testappgw-lb1-d1",
-    "dnsNameForLBIP" : "[concat('dns-, 'uniqueString(concat(resourceGroup().id, subscription().id, 'testappgwlb1d1')))]",
+    "dnsNameForLBIP" : "[concat('dns-', uniqueString(concat(resourceGroup().id, subscription().id, 'testappgwlb1d1')))]",
     "appGwSubnetName" : "subnet-testappgw-lb1-d1",
     "virtualNetworkID" : "[resourceId('Microsoft.Network/virtualNetworks',variables('virtualNetworkName'))]",
     "publicIPAddressType" : "Dynamic",
@@ -157,10 +157,7 @@ class AzureAppGatewayResourceTemplateSpec extends Specification {
     "location" : "[parameters('location')]",
     "tags" : null,
     "properties" : {
-      "publicIPAllocationMethod" : "[variables('publicIPAddressType')]",
-      "dnsSettings" : {
-        "domainNameLabel" : "[variables('dnsNameForLBIP')]"
-      }
+      "publicIPAllocationMethod" : "[variables('publicIPAddressType')]"
     }
   }, {
     "apiVersion" : "[variables('apiVersion')]",
@@ -316,7 +313,7 @@ class AzureAppGatewayResourceTemplateSpec extends Specification {
     "appGwName" : "testappgw-lb1-d1",
     "virtualNetworkName" : "vnet-testappgw-westus",
     "publicIPAddressName" : "pip-testappgw-lb1-d1",
-    "dnsNameForLBIP" : "[concat('dns-, 'uniqueString(concat(resourceGroup().id, subscription().id, 'testappgwlb1d1')))]",
+    "dnsNameForLBIP" : "[concat('dns-', uniqueString(concat(resourceGroup().id, subscription().id, 'testappgwlb1d1')))]",
     "appGwSubnetName" : "subnet-testappgw-lb1-d1",
     "virtualNetworkID" : "[resourceId('Microsoft.Network/virtualNetworks',variables('virtualNetworkName'))]",
     "publicIPAddressType" : "Dynamic",
@@ -332,10 +329,7 @@ class AzureAppGatewayResourceTemplateSpec extends Specification {
     "location" : "[parameters('location')]",
     "tags" : null,
     "properties" : {
-      "publicIPAllocationMethod" : "[variables('publicIPAddressType')]",
-      "dnsSettings" : {
-        "domainNameLabel" : "[variables('dnsNameForLBIP')]"
-      }
+      "publicIPAllocationMethod" : "[variables('publicIPAddressType')]"
     }
   }, {
     "apiVersion" : "[variables('apiVersion')]",

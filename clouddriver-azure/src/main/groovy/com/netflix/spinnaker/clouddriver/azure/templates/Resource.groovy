@@ -47,18 +47,22 @@ class Resource {
 }
 
 class PublicIpResource extends Resource{
+  PublicIPProperties properties = new PublicIPProperties()
 
   PublicIpResource() {
     apiVersion = '''[variables('apiVersion')]'''
     name = '''[variables('publicIPAddressName')]'''
     type = '''Microsoft.Network/publicIPAddresses'''
     location = '''[parameters('location')]'''
+    //properties = withDns ? new PublicIPPropertiesWithDns() : new PublicIPProperties()
   }
-  PublicIPProperties properties = new PublicIPProperties()
 }
 
-class PublicIPProperties{
+class PublicIPProperties {
   String publicIPAllocationMethod = '''[variables('publicIPAddressType')]'''
+}
+
+class PublicIPPropertiesWithDns extends PublicIPProperties{
   DnsSettings dnsSettings = new DnsSettings()
 }
 
@@ -67,7 +71,7 @@ class DnsSettings{
 
   static String getUniqueDNSName(String name) {
     String noDashName = name.replaceAll("-", "").toLowerCase()
-    "[concat('${AzureUtilities.DNS_NAME_PREFIX}, 'uniqueString(concat(resourceGroup().id, subscription().id, '$noDashName')))]"
+    "[concat('${AzureUtilities.DNS_NAME_PREFIX}', uniqueString(concat(resourceGroup().id, subscription().id, '$noDashName')))]"
   }
 
 }
