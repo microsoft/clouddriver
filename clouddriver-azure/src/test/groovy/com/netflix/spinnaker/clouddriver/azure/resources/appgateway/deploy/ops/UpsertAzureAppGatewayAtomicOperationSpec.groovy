@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-package com.netflix.spinnaker.clouddriver.azure.resources.appgateway.deploy.converters
+package com.netflix.spinnaker.clouddriver.azure.resources.appgateway.deploy.ops
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
+import com.netflix.spinnaker.clouddriver.azure.resources.appgateway.ops.UpsertAzureAppGatewayAtomicOperation
 import com.netflix.spinnaker.clouddriver.azure.security.AzureNamedAccountCredentials
 import com.netflix.spinnaker.clouddriver.security.AccountCredentialsProvider
 import com.netflix.spinnaker.clouddriver.azure.resources.appgateway.model.AzureAppGatewayDescription
@@ -25,8 +26,7 @@ import com.netflix.spinnaker.clouddriver.azure.resources.appgateway.ops.converte
 import spock.lang.Shared
 import spock.lang.Specification
 
-class UpsertAzureAppGatewayAtomicOperationConverterSpec extends  Specification{
-
+class UpsertAzureAppGatewayAtomicOperationSpec extends Specification{
   @Shared
   ObjectMapper mapper = new ObjectMapper()
 
@@ -40,50 +40,18 @@ class UpsertAzureAppGatewayAtomicOperationConverterSpec extends  Specification{
     converter.accountCredentialsProvider = accountCredentialsProvider
   }
 
-  void "Create an AzureAppGatewayDescription from a given input"() {
+  void "Create UpsertAzureAppGatewayAtomicOperation object simple test"() {
     setup:
     mapper.configure(SerializationFeature.INDENT_OUTPUT, true)
     mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
-    def input = [
-      name: "testappgw-lb1-d1",
-      loadBalancerName: "testappgw-lb1-d1",
-      region: "westus",
-      accountName: "myazure-account",
-      cloudProvider: "azure",
-      appName: "testappgw",
-      stack: "lb1",
-      detail: "d1",
-      probes: [
-        [
-          name: "healthcheck1",
-          protocol: "HTTP",
-          path: "/healthcheck",
-          interval: 120,
-          timeout: 30,
-          unhealthyThreshold: 8
-        ]
-      ],
-      rules: [
-        [
-          name: "lbRule1",
-          protocol: "HTTP",
-          externalPort: 80,
-          backendPort: 8080,
-        ],
-        [
-          name: "lbRule2",
-          protocol: "HTTP",
-          externalPort: 8080,
-          backendPort: 8080,
-        ]
-      ]
-    ]
+    def input = '''{ "cloudProvider" : "azure", "appName" : "testappgw", "loadBalancerName" : "testappgw-lb1-d1", "stack" : "lb1", "detail" : "d1", "credentials" : "myazure-account", "region" : "westus", "probes" : [ { "name" : "healthcheck1", "protocol" : "HTTP", "path" : "/healthcheck", "interval" : 120, "unhealthyThreshold" : 8, "timeout" : 30 } ], "rules" : [ { "name" : "lbRule1", "protocol" : "HTTP", "externalPort" : "80", "backendPort" : "8080" } ], "name" : "testappgw-lb1-d1", "user" : "[anonymous]" }'''
 
     when:
-    def description = converter.convertDescription(input)
+    UpsertAzureAppGatewayAtomicOperation operation = converter.convertOperation(mapper.readValue(input, Map))
+    AzureAppGatewayDescription description = converter.convertDescription(mapper.readValue(input, Map))
 
     then:
-    description instanceof AzureAppGatewayDescription
+    operation
     mapper.writeValueAsString(description) == expectedFullDescription
   }
 
@@ -96,7 +64,7 @@ class UpsertAzureAppGatewayAtomicOperationConverterSpec extends  Specification{
   "detail" : "d1",
   "credentials" : null,
   "region" : "westus",
-  "user" : null,
+  "user" : "[anonymous]",
   "createdTime" : null,
   "lastReadTime" : 0,
   "tags" : { },
@@ -122,15 +90,9 @@ class UpsertAzureAppGatewayAtomicOperationConverterSpec extends  Specification{
     "externalPort" : 80,
     "backendPort" : 8080,
     "sslCertificate" : null
-  }, {
-    "name" : "lbRule2",
-    "protocol" : "HTTP",
-    "externalPort" : 8080,
-    "backendPort" : 8080,
-    "sslCertificate" : null
   } ],
   "sku" : "Standard_Small",
   "tier" : "Standard",
   "capacity" : 2
 }'''
-}
+  }
