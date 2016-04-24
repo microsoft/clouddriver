@@ -18,6 +18,7 @@ package com.netflix.spinnaker.clouddriver.azure.client
 
 import com.microsoft.azure.CloudException
 import com.microsoft.azure.credentials.ApplicationTokenCredentials
+import com.microsoft.azure.management.network.ApplicationGatewaysOperations
 import com.microsoft.azure.management.network.LoadBalancersOperations
 import com.microsoft.azure.management.network.NetworkManagementClient
 import com.microsoft.azure.management.network.NetworkManagementClientImpl
@@ -229,6 +230,36 @@ class AzureNetworkClient extends AzureBaseClient {
       "Delete PublicIp ${publicIpName}",
       "Failed to delete PublicIp ${publicIpName} in ${resourceGroupName}"
     )
+  }
+
+  /**
+   * Delete an Application Gateway resource in Azure
+   * @param resourceGroupName name of the resource group where the Application Gateway resource was created (see application name and region/location)
+   * @param appGatewayName name of the Application Gateway resource to delete
+   * @return a ServiceResponse object
+   */
+  ServiceResponse deleteAppGateway(String resourceGroupName, String appGatewayName) {
+    ServiceResponse result
+    def appGateway = client.getApplicationGatewaysOperations()?.get(resourceGroupName, appGatewayName)?.body
+
+    ApplicationGatewaysOperations ops = getAzureOps(
+      client.&getApplicationGatewaysOperations, "Get operations object", "Failed to get operation object") as ApplicationGatewaysOperations
+
+    def publicIpAddressName = AzureUtilities.getResourceNameFromID(appGateway?.frontendIPConfigurations?.first()?.getPublicIPAddress()?.id)
+
+    result = deleteAzureResource(
+      ops.&delete,
+      resourceGroupName,
+      appGatewayName,
+      null,
+      "Delete Application Gateway ${appGatewayName}",
+      "Failed to delete Application Gateway ${appGatewayName} in ${resourceGroupName}"
+    )
+
+    // delete the public IP resource that was created and associated with the deleted load balancer
+    if (publicIpAddressName) result = deletePublicIp(resourceGroupName, publicIpAddressName)
+
+    result
   }
 
   /**

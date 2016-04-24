@@ -40,7 +40,7 @@ class AzureAppGatewayDescription extends AzureResourceOpsDescription {
     }
 
     String name
-    AzureLoadBalancerProbesType protocol = "HTTP"
+    AzureLoadBalancerProbesType protocol = AzureLoadBalancerProbesType.HTTP
     String host = "localhost"
     String path
     long interval = 120
@@ -51,13 +51,13 @@ class AzureAppGatewayDescription extends AzureResourceOpsDescription {
   static class AzureAppGatewayRule {
     enum AzureLoadBalancingRulesType {
       HTTP
-      // TODO: add support for HTTPS port mappings
     }
 
     String name
     AzureLoadBalancingRulesType protocol
     long externalPort
     long backendPort
+    // TODO: add support for HTTPS port mappings
     String sslCertificate
   }
 
