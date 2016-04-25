@@ -18,10 +18,10 @@ package com.netflix.spinnaker.clouddriver.azure.resources.appgateway.deploy.conv
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
-import com.netflix.spinnaker.clouddriver.azure.security.AzureNamedAccountCredentials
-import com.netflix.spinnaker.clouddriver.security.AccountCredentialsProvider
 import com.netflix.spinnaker.clouddriver.azure.resources.appgateway.model.AzureAppGatewayDescription
 import com.netflix.spinnaker.clouddriver.azure.resources.appgateway.ops.converters.UpsertAzureAppGatewayAtomicOperationConverter
+import com.netflix.spinnaker.clouddriver.azure.security.AzureNamedAccountCredentials
+import com.netflix.spinnaker.clouddriver.security.AccountCredentialsProvider
 import spock.lang.Shared
 import spock.lang.Specification
 

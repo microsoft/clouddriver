@@ -27,12 +27,6 @@ import spock.lang.Shared
 import spock.lang.Specification
 
 class DeleteAzureAppGatewayAtomicOperationSpec extends Specification{
-  static final ACCOUNT_NAME = "my-azure-account"
-  private static final CLOUD_PROVIDER = "azure"
-  private static final ACCOUNT_CLIENTID = "azureclientid"
-  private static final ACCOUNT_TENANTID = "azuretenantid1"
-  private static final ACCOUNT_APPKEY = "azureappkey1"
-  private static final SUBSCRIPTION_ID = "azuresubscriptionid1"
 
   @Shared
   ObjectMapper mapper = new ObjectMapper()

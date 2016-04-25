@@ -16,12 +16,8 @@
 
 package com.netflix.spinnaker.clouddriver.azure.resources.appgateway.ops
 
-import com.microsoft.azure.CloudException
-import com.microsoft.azure.management.resources.models.DeploymentExtended
 import com.netflix.spinnaker.clouddriver.azure.common.AzureUtilities
-import com.netflix.spinnaker.clouddriver.azure.resources.common.model.AzureDeploymentOperation
 import com.netflix.spinnaker.clouddriver.azure.resources.appgateway.model.AzureAppGatewayDescription
-import com.netflix.spinnaker.clouddriver.azure.templates.AzureAppGatewayResourceTemplate
 import com.netflix.spinnaker.clouddriver.data.task.Task
 import com.netflix.spinnaker.clouddriver.data.task.TaskRepository
 import com.netflix.spinnaker.clouddriver.orchestration.AtomicOperation
