@@ -19,21 +19,28 @@ package com.netflix.spinnaker.clouddriver.azure.resources.appgateway.deploy.ops
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.netflix.spinnaker.clouddriver.azure.resources.appgateway.model.AzureAppGatewayDescription
-import com.netflix.spinnaker.clouddriver.azure.resources.appgateway.ops.converters.UpsertAzureAppGatewayAtomicOperationConverter
-import com.netflix.spinnaker.clouddriver.azure.resources.appgateway.ops.UpsertAzureAppGatewayAtomicOperation
+import com.netflix.spinnaker.clouddriver.azure.resources.appgateway.ops.converters.DeleteAzureAppGatewayAtomicOperationConverter
+import com.netflix.spinnaker.clouddriver.azure.resources.appgateway.ops.DeleteAzureAppGatewayAtomicOperation
 import com.netflix.spinnaker.clouddriver.azure.security.AzureNamedAccountCredentials
 import com.netflix.spinnaker.clouddriver.security.AccountCredentialsProvider
 import spock.lang.Shared
 import spock.lang.Specification
 
-class UpsertAzureAppGatewayAtomicOperationSpec extends Specification{
+class DeleteAzureAppGatewayAtomicOperationSpec extends Specification{
+  static final ACCOUNT_NAME = "my-azure-account"
+  private static final CLOUD_PROVIDER = "azure"
+  private static final ACCOUNT_CLIENTID = "azureclientid"
+  private static final ACCOUNT_TENANTID = "azuretenantid1"
+  private static final ACCOUNT_APPKEY = "azureappkey1"
+  private static final SUBSCRIPTION_ID = "azuresubscriptionid1"
+
   @Shared
   ObjectMapper mapper = new ObjectMapper()
 
-  @Shared UpsertAzureAppGatewayAtomicOperationConverter converter
+  @Shared DeleteAzureAppGatewayAtomicOperationConverter converter
 
   def setupSpec() {
-    this.converter = new UpsertAzureAppGatewayAtomicOperationConverter(objectMapper: mapper)
+    this.converter = new DeleteAzureAppGatewayAtomicOperationConverter(objectMapper: mapper)
     def accountCredentialsProvider = Mock(AccountCredentialsProvider)
     def mockCredentials = Mock(AzureNamedAccountCredentials)
     accountCredentialsProvider.getCredentials(_) >> mockCredentials
@@ -44,10 +51,10 @@ class UpsertAzureAppGatewayAtomicOperationSpec extends Specification{
     setup:
     mapper.configure(SerializationFeature.INDENT_OUTPUT, true)
     mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
-    def input = '''{ "cloudProvider" : "azure", "appName" : "testappgw", "loadBalancerName" : "testappgw-lb1-d1", "stack" : "lb1", "detail" : "d1", "credentials" : "myazure-account", "region" : "westus", "probes" : [ { "name" : "healthcheck1", "protocol" : "HTTP", "path" : "/healthcheck", "interval" : 120, "unhealthyThreshold" : 8, "timeout" : 30 } ], "rules" : [ { "name" : "lbRule1", "protocol" : "HTTP", "externalPort" : "80", "backendPort" : "8080" } ], "name" : "testappgw-lb1-d1", "user" : "[anonymous]" }'''
+    def input = '''{ "cloudProvider" : "azure", "appName" : "testappgw", "loadBalancerName" : "testappgw-lb1-d1", "credentials" : "myazure-account", "region" : "westus", "name" : "testappgw-lb1-d1", "user" : "[anonymous]" }'''
 
     when:
-    UpsertAzureAppGatewayAtomicOperation operation = converter.convertOperation(mapper.readValue(input, Map))
+    DeleteAzureAppGatewayAtomicOperation operation = converter.convertOperation(mapper.readValue(input, Map))
     AzureAppGatewayDescription description = converter.convertDescription(mapper.readValue(input, Map))
 
     then:
@@ -60,8 +67,8 @@ class UpsertAzureAppGatewayAtomicOperationSpec extends Specification{
   "cloudProvider" : "azure",
   "accountName" : "myazure-account",
   "appName" : "testappgw",
-  "stack" : "lb1",
-  "detail" : "d1",
+  "stack" : null,
+  "detail" : null,
   "credentials" : null,
   "region" : "westus",
   "user" : "[anonymous]",
@@ -75,24 +82,10 @@ class UpsertAzureAppGatewayAtomicOperationSpec extends Specification{
   "dnsName" : null,
   "cluster" : null,
   "serverGroups" : null,
-  "probes" : [ {
-    "name" : "healthcheck1",
-    "protocol" : "HTTP",
-    "host" : "localhost",
-    "path" : "/healthcheck",
-    "interval" : 120,
-    "timeout" : 30,
-    "unhealthyThreshold" : 8
-  } ],
-  "rules" : [ {
-    "name" : "lbRule1",
-    "protocol" : "HTTP",
-    "externalPort" : 80,
-    "backendPort" : 8080,
-    "sslCertificate" : null
-  } ],
+  "probes" : [ ],
+  "rules" : [ ],
   "sku" : "Standard_Small",
   "tier" : "Standard",
   "capacity" : 2
 }'''
-  }
+}
