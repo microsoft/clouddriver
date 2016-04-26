@@ -39,10 +39,10 @@ class DeleteAzureAppGatewayAtomicOperation implements AtomicOperation<Void> {
   }
 
   /**
-   * curl -X POST -H "Content-Type: application/json" -d '[ { "deleteAppGateway": { "cloudProvider" : "azure", "appName" : "tappgw1", "loadBalancerName" : "tappgw-st1-d1", "credentials" : "azure-cred1", "region" : "westus", "name" : "tappgw1-st1-d1", "user" : "[anonymous]" }} ]' localhost:7002/azure/ops
+   * curl -X POST -H "Content-Type: application/json" -d '[ { "deleteAppGateway": { "cloudProvider" : "azure", "appName" : "tappgw1", "loadBalancerName" : "tappgw1-st1-d1", "credentials" : "azure-cred1", "region" : "westus", "name" : "tappgw1-st1-d1", "user" : "[anonymous]" }} ]' localhost:7002/azure/ops
    *
    * TODO: change ops task name to deleteLoadBalancer:
-   * curl -X POST -H "Content-Type: application/json" -d '[ { "deleteLoadBalancer": { "cloudProvider" : "azure", "appName" : "tappgw1", "loadBalancerName" : "tappgw1-st1-d1", "credentials" : "azure-cred1", "region" : "westus", "name" : "azure1-st1-d1", "user" : "[anonymous]" }} ]' localhost:7002/azure/ops
+   * curl -X POST -H "Content-Type: application/json" -d '[ { "deleteLoadBalancer": { "cloudProvider" : "azure", "appName" : "tappgw1", "loadBalancerName" : "tappgw1-st1-d1", "credentials" : "azure-cred1", "region" : "westus", "name" : "tappgw1-st1-d1", "user" : "[anonymous]" }} ]' localhost:7002/azure/ops
    *
    * @param priorOutputs
    * @return

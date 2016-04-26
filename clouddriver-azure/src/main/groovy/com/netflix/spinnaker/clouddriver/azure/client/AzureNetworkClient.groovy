@@ -36,6 +36,7 @@ import com.microsoft.azure.management.network.models.VirtualNetwork
 import com.microsoft.rest.ServiceResponse
 import com.netflix.frigga.Names
 import com.netflix.spinnaker.clouddriver.azure.common.AzureUtilities
+import com.netflix.spinnaker.clouddriver.azure.resources.appgateway.model.AzureAppGatewayDescription
 import com.netflix.spinnaker.clouddriver.azure.resources.loadbalancer.model.AzureLoadBalancerDescription
 import com.netflix.spinnaker.clouddriver.azure.resources.network.model.AzureVirtualNetworkDescription
 import com.netflix.spinnaker.clouddriver.azure.resources.securitygroup.model.AzureSecurityGroupDescription
@@ -230,6 +231,94 @@ class AzureNetworkClient extends AzureBaseClient {
       "Delete PublicIp ${publicIpName}",
       "Failed to delete PublicIp ${publicIpName} in ${resourceGroupName}"
     )
+  }
+
+  /**
+   * Retrieve an Azure Application Gateway for a give set of credentials, resource group and name
+   * @param resourceGroupName the name of the resource group to look into
+   * @param appGatewayName the of the application gateway
+   * @return a description object which represent an application gateway in Azure or null if the application gateway resource could not be retrieved
+   */
+  AzureAppGatewayDescription getAppGateway(String resourceGroupName, String appGatewayName) {
+    try {
+      def currentTime = System.currentTimeMillis()
+      def item = this.client.getApplicationGatewaysOperations()?.get(resourceGroupName, appGatewayName)?.body
+      if (item) {
+        def agItem = AzureAppGatewayDescription.getDescriptionForAppGateway(item)
+        agItem.appName = AzureUtilities.getAppNameFromResourceId(item.id)
+        agItem.tags = item.tags
+        agItem.dnsName = getDnsNameForLoadBalancer(AzureUtilities.getResourceGroupNameFromResourceId(item.id), item.name)
+        agItem.lastReadTime = currentTime
+        return agItem
+      }
+    } catch (CloudException e) {
+      log.error("getAppGateway(${resourceGroupName},${appGatewayName}) -> Cloud Exception ", e)
+    } catch (Exception e) {
+      log.error("getAppGateway(${resourceGroupName},${appGatewayName}) -> Exception ", e)
+    }
+
+    null
+  }
+
+  /**
+   * Retrieve a collection of all application gateways for a give set of credentials and the location
+   * @param region the location of the virtual network
+   * @return a Collection of objects which represent an Application Gateway in Azure
+   */
+  Collection<AzureAppGatewayDescription> getAppGatewaysAll(String region) {
+    def result = new ArrayList<AzureAppGatewayDescription>()
+
+    try {
+      def appGateways = this.client.getApplicationGatewaysOperations().listAll().body
+      def currentTime = System.currentTimeMillis()
+      appGateways.each {item ->
+        if (item.location == region) {
+          try {
+            def agItem = AzureAppGatewayDescription.getDescriptionForAppGateway(item)
+            agItem.appName = AzureUtilities.getAppNameFromResourceId(item.id)
+            agItem.tags = item.tags
+            agItem.dnsName = getDnsNameForAppGateway(AzureUtilities.getResourceGroupNameFromResourceId(item.id), item.name)
+            agItem.lastReadTime = currentTime
+            result += agItem
+          } catch (RuntimeException re) {
+            // if we get a runtime exception here, log it but keep processing the rest of the
+            // load balancers
+            log.error("Unable to process load balancer ${item.name}: ${re.message}")
+          }
+        }
+      }
+    } catch (Exception e) {
+      log.error("getLoadBalancersAll -> Unexpected exception ", e)
+    }
+
+    result
+  }
+
+  /**
+   * get the dns name associated with an Application Gateway in Azure
+   * @param resourceGroupName name of the resource group where the application gateway was created (see application name and region/location)
+   * @param appGatewayName the name of the application gateway in Azure
+   * @return the dns name of the given application gateway or "dns-not-found"
+   */
+  String getDnsNameForAppGateway(String resourceGroupName, String appGatewayName) {
+    String dnsName = "dns-not-found"
+
+    try {
+      def appGateway = client.getApplicationGatewaysOperations()?.get(resourceGroupName, appGatewayName)?.body
+      if (appGateway?.frontendIPConfigurations) {
+        def publicIpResource = appGateway.frontendIPConfigurations.first()?.getPublicIPAddress()?.id
+        PublicIPAddress publicIp = publicIpResource ?
+          client
+            .getPublicIPAddressesOperations()
+            .get(resourceGroupName, AzureUtilities.getNameFromResourceId(publicIpResource), null)?.body
+          : null
+        if (publicIp?.dnsSettings?.fqdn) dnsName = publicIp.dnsSettings.fqdn
+      }
+    } catch (Exception e) {
+      log.error("getDnsNameForAppGateway -> Unexpected exception ", e)
+    }
+
+    dnsName
   }
 
   /**
