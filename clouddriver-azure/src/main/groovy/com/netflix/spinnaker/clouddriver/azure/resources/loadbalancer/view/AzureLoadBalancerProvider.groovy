@@ -74,11 +74,11 @@ class AzureLoadBalancerProvider implements LoadBalancerProvider<AzureLoadBalance
     def parts = Keys.parse(azureCloudProvider, cacheData.id)
 
     new AzureLoadBalancer(
-      account: parts.account?: "none",
+      account: parts.account ?: "none",
       name: loadBalancerDescription.loadBalancerName,
       region: loadBalancerDescription.region,
-      vnet: loadBalancerDescription.vnet?: "vnet-unassigned",
-      subnet: loadBalancerDescription.subnet?: "subnet-unassigned",
+      vnet: loadBalancerDescription.vnet ?: "vnet-unassigned",
+      subnet: loadBalancerDescription.subnet ?: "subnet-unassigned",
       serverGroups: [new LoadBalancerServerGroup(name: loadBalancerDescription.serverGroup, isDisabled: false, detachedInstances: [], instances: [])]
     )
   }

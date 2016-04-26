@@ -74,12 +74,12 @@ class AzureAppGatewayProvider implements LoadBalancerProvider<AzureLoadBalancer>
     def parts = Keys.parse(azureCloudProvider, cacheData.id)
 
     def loadBalancer = new AzureLoadBalancer(
-      account: parts.account?: "none",
+      account: parts.account ?: "none",
       name: description.loadBalancerName,
       region: description.region,
-      vnet: description.vnet?: "vnet-unassigned",
-      subnet: description.subnet?: "subnet-unassigned",
-      cluster: description.cluster?: "unassigned"
+      vnet: description.vnet ?: "vnet-unassigned",
+      subnet: description.subnet ?: "subnet-unassigned",
+      cluster: description.cluster ?: "unassigned"
     )
     description.serverGroups?.each { serverGroup ->
       // TODO: add proper check for enable/disable server groups
