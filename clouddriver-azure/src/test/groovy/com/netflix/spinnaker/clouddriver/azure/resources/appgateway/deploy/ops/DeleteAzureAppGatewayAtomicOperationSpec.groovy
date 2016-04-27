@@ -41,7 +41,7 @@ class DeleteAzureAppGatewayAtomicOperationSpec extends Specification{
     converter.accountCredentialsProvider = accountCredentialsProvider
   }
 
-  void "Create UpsertAzureAppGatewayAtomicOperation object - simple test"() {
+  void "Create deleteAzureAppGatewayAtomicOperation object - simple test"() {
     setup:
     mapper.configure(SerializationFeature.INDENT_OUTPUT, true)
     mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)

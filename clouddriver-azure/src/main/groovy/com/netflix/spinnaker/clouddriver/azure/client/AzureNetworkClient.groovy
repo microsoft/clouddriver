@@ -89,16 +89,10 @@ class AzureNetworkClient extends AzureBaseClient {
         if (item.location == region) {
           try {
             def lbItem = getDescriptionForLoadBalancer(item)
-            lbItem.appName = AzureUtilities.getAppNameFromResourceId(item.id)
-            lbItem.tags = item.tags
-            lbItem.dnsName = getDnsNameForLoadBalancer(AzureUtilities.getResourceGroupNameFromResourceId(item.id), item.name)
-
-            // TODO: investigate and add code to handle changes to publicIP resource associate with current load balancer
-            // There's a small probability that the publicIP resources associated with the current load balancer has changed
-            //  from the time we read the load balancer current properties at the beginning of the current closure/loop
-            //  and we should reflect that in the lastReadTime property.
-            // We currently don't use any of the publicIp properties other than the DNS so we don't need to address that now
-
+            lbItem.dnsName = getDnsNameForPublicIp(
+              AzureUtilities.getResourceGroupNameFromResourceId(item.id),
+              AzureUtilities.getNameFromResourceId(item.frontendIPConfigurations?.first()?.getPublicIPAddress()?.id)
+            )
             lbItem.lastReadTime = currentTime
             result += lbItem
           } catch (RuntimeException re) {
@@ -127,16 +121,10 @@ class AzureNetworkClient extends AzureBaseClient {
       def item = executeOp({loadBalancerOps.get(resourceGroupName, loadBalancerName, null)})?.body
       if (item) {
         def lbItem = getDescriptionForLoadBalancer(item)
-        lbItem.appName = AzureUtilities.getAppNameFromResourceId(item.id)
-        lbItem.tags = item.tags
-        lbItem.dnsName = getDnsNameForLoadBalancer(AzureUtilities.getResourceGroupNameFromResourceId(item.id), item.name)
-
-        // TODO: investigate and add code to handle changes to publicIP resource associate with current load balancer
-        // There's a small probability that the publicIP resources associated with the current load balancer has changed
-        //  from the time we read the load balancer current properties at the beginning of the current closure/loop
-        //  and we should reflect that in the lastReadTime property.
-        // We currently don't use any of the publicIp properties other than the DNS so we don't need to address that now
-
+        lbItem.dnsName = getDnsNameForPublicIp(
+          AzureUtilities.getResourceGroupNameFromResourceId(item.id),
+          AzureUtilities.getNameFromResourceId(item.frontendIPConfigurations?.first()?.getPublicIPAddress()?.id)
+        )
         lbItem.lastReadTime = currentTime
         return lbItem
       }
@@ -258,16 +246,15 @@ class AzureNetworkClient extends AzureBaseClient {
       def appGateway = executeOp({appGatewayOps.get(resourceGroupName, appGatewayName)})?.body
       if (appGateway) {
         def agItem = AzureAppGatewayDescription.getDescriptionForAppGateway(appGateway)
-        agItem.appName = AzureUtilities.getAppNameFromResourceId(appGateway.id)
-        agItem.tags = appGateway.tags
-        agItem.dnsName = getDnsNameForAppGateway(AzureUtilities.getResourceGroupNameFromResourceId(appGateway.id), appGateway.name)
+        agItem.dnsName = getDnsNameForPublicIp(
+          AzureUtilities.getResourceGroupNameFromResourceId(appGateway.id),
+          AzureUtilities.getNameFromResourceId(appGateway.frontendIPConfigurations?.first()?.getPublicIPAddress()?.id)
+        )
         agItem.lastReadTime = currentTime
         return agItem
       }
-    } catch (CloudException e) {
-      log.error("getAppGateway(${resourceGroupName},${appGatewayName}) -> Cloud Exception ", e)
     } catch (Exception e) {
-      log.error("getAppGateway(${resourceGroupName},${appGatewayName}) -> Exception ", e)
+      log.error("getAppGateway(${resourceGroupName},${appGatewayName}) -> Cloud Exception ", e)
     }
 
     null
@@ -289,15 +276,16 @@ class AzureNetworkClient extends AzureBaseClient {
         if (item.location == region) {
           try {
             def agItem = AzureAppGatewayDescription.getDescriptionForAppGateway(item)
-            agItem.appName = AzureUtilities.getAppNameFromResourceId(item.id)
-            agItem.tags = item.tags
-            agItem.dnsName = getDnsNameForAppGateway(AzureUtilities.getResourceGroupNameFromResourceId(item.id), item.name)
+            agItem.dnsName = getDnsNameForPublicIp(
+              AzureUtilities.getResourceGroupNameFromResourceId(item.id),
+              AzureUtilities.getNameFromResourceId(item.frontendIPConfigurations?.first()?.getPublicIPAddress()?.id)
+            )
             agItem.lastReadTime = currentTime
             result += agItem
           } catch (RuntimeException re) {
             // if we get a runtime exception here, log it but keep processing the rest of the
             // load balancers
-            log.error("Unable to process load balancer ${item.name}: ${re.message}")
+            log.error("Unable to process application gateway ${item.name}: ${re.message}")
           }
         }
       }
@@ -306,35 +294,6 @@ class AzureNetworkClient extends AzureBaseClient {
     }
 
     result
-  }
-
-  /**
-   * get the dns name associated with an Application Gateway in Azure
-   * @param resourceGroupName name of the resource group where the application gateway was created (see application name and region/location)
-   * @param appGatewayName the name of the application gateway in Azure
-   * @return the dns name of the Public IP for the given application gateway or "dns-not-found"
-   */
-  String getDnsNameForAppGateway(String resourceGroupName, String appGatewayName) {
-    String dnsName = "dns-not-found"
-
-    try {
-      def appGateway = executeOp({appGatewayOps.get(resourceGroupName, appGatewayName)})?.body
-
-      if (appGateway?.frontendIPConfigurations) {
-        def publicIpResource = appGateway.frontendIPConfigurations.first()?.getPublicIPAddress()?.id
-        
-	PublicIPAddress publicIp = publicIpResource ?
-          executeOp({publicIPAddressOperations.get(
-	    resourceGroupName, 
-	    AzureUtilities.getNameFromResourceId(publicIpResource), null)}
-	  )?.body : null
-        if (publicIp?.dnsSettings?.fqdn) dnsName = publicIp.dnsSettings.fqdn
-      }
-    } catch (Exception e) {
-      log.error("getDnsNameForAppGateway -> Unexpected exception ", e)
-    }
-
-    dnsName
   }
 
   /**
@@ -688,29 +647,23 @@ class AzureNetworkClient extends AzureBaseClient {
   }
 
   /**
-   * get the dns name associated with a load balancer in Azure
-   * @param resourceGroupName name of the resource group where the load balancer was created (see application name and region/location)
-   * @param loadBalancerName the name of the load balancer in Azure
-   * @return the dns name of the given load balancer
+   * get the dns name associated with a resource via the Public Ip dependency
+   * @param resourceGroupName name of the resource group where the application gateway was created (see application name and region/location)
+   * @param publicIpName the name of the public IP resource
+   * @return the dns name of the Public IP or "dns-not-found"
    */
-  String getDnsNameForLoadBalancer(String resourceGroupName, String loadBalancerName) {
+  String getDnsNameForPublicIp(String resourceGroupName, String publicIpName) {
     String dnsName = "dns-not-found"
 
     try {
-      def loadBalancer = executeOp({loadBalancerOps.get(resourceGroupName, loadBalancerName, null)})?.body
-      if (loadBalancer.frontendIPConfigurations) {
-        if (loadBalancer.frontendIPConfigurations.size() != 1) {
-          log.info("getDnsNameForLoadBalancer -> Unexpected number of public IP addresses associated with the load balancer (should be only one)!")
-        }
-
-        def publicIpResource = loadBalancer.frontendIPConfigurations.first()?.getPublicIPAddress()?.id
-        PublicIPAddress publicIp = publicIpResource ?
-          executeOp({publicIPAddressOperations.get(resourceGroupName, AzureUtilities.getNameFromResourceId(publicIpResource), null)})?.body
-          : null
-        if (publicIp?.dnsSettings?.fqdn) dnsName = publicIp.dnsSettings.fqdn
-      }
+      PublicIPAddress publicIp = publicIpName ?
+        executeOp({publicIPAddressOperations.get(
+          resourceGroupName,
+          publicIpName, null)}
+        )?.body : null
+      if (publicIp?.dnsSettings?.fqdn) dnsName = publicIp.dnsSettings.fqdn
     } catch (Exception e) {
-      log.error("getDnsNameForLoadBalancer -> Unexpected exception ", e)
+      log.error("getDnsNameForPublicIp -> Unexpected exception ", e)
     }
 
     dnsName
