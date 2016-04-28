@@ -398,7 +398,7 @@ class AzureNetworkClient extends AzureBaseClient {
       def op = subnetOperations.createOrUpdate(resourceGroupName, virtualNetworkName, subnetName, subnet)
 
       // Return the resource Id
-      op.body.id
+      op?.body?.id
 
     } catch (Exception e) {
       // Add something to the log to show that the subnet creation failed then rethrow the exception
@@ -428,8 +428,8 @@ class AzureNetworkClient extends AzureBaseClient {
   }
 
   private void addSecurityGroupToSubnet(String resourceGroupName, String securityGroupName, Subnet subnet) {
-    def securityGroup = executeOp({networkSecurityGroupOperations.get(resourceGroupName, securityGroupName, null)}).body
-    subnet.setNetworkSecurityGroup securityGroup
+    def securityGroup = executeOp({networkSecurityGroupOperations.get(resourceGroupName, securityGroupName, null)})?.body
+    subnet.setNetworkSecurityGroup(securityGroup)
   }
 
   /**
@@ -591,7 +591,7 @@ class AzureNetworkClient extends AzureBaseClient {
    * @return virtual network instance, or null if it does not exist
    */
   VirtualNetwork getVirtualNetwork(String resourceGroupName, String virtualNetworkName) {
-    executeOp({virtualNetworksOperations.get(resourceGroupName, virtualNetworkName, null)}).body
+    executeOp({virtualNetworksOperations.get(resourceGroupName, virtualNetworkName, null)})?.body
   }
 
   /**

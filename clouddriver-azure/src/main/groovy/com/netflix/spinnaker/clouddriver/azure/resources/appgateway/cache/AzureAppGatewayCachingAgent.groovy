@@ -30,6 +30,7 @@ import com.netflix.spinnaker.cats.cache.RelationshipCacheFilter
 import com.netflix.spinnaker.cats.provider.ProviderCache
 import com.netflix.spinnaker.clouddriver.azure.AzureCloudProvider
 import com.netflix.spinnaker.clouddriver.azure.common.AzureUtilities
+import com.netflix.spinnaker.clouddriver.azure.common.cache.AzureCachingAgent
 import com.netflix.spinnaker.clouddriver.azure.resources.appgateway.model.AzureAppGatewayDescription
 import com.netflix.spinnaker.clouddriver.azure.resources.common.cache.Keys
 import com.netflix.spinnaker.clouddriver.azure.resources.common.cache.provider.AzureInfrastructureProvider
@@ -42,12 +43,7 @@ import groovy.util.logging.Slf4j
 import static com.netflix.spinnaker.cats.agent.AgentDataType.Authority.AUTHORITATIVE
 
 @Slf4j
-class AzureAppGatewayCachingAgent implements CachingAgent, OnDemandAgent, AccountAware{
-  final AzureCloudProvider azureCloudProvider
-  final String accountName
-  final AzureCredentials creds
-  final String region
-  final ObjectMapper objectMapper
+class AzureAppGatewayCachingAgent extends AzureCachingAgent {
   final Registry registry
   final OnDemandMetricsSupport metricsSupport
 
@@ -61,38 +57,30 @@ class AzureAppGatewayCachingAgent implements CachingAgent, OnDemandAgent, Accoun
                               String region,
                               ObjectMapper objectMapper,
                               Registry registry) {
-    this.azureCloudProvider = azureCloudProvider
-    this.accountName = accountName
-    this.creds = creds
-    this.region = region
-    this.objectMapper = objectMapper.enable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+    super(azureCloudProvider, accountName, creds, region, objectMapper)
     this.registry = registry
     this.metricsSupport = new OnDemandMetricsSupport(registry, this, "${azureCloudProvider.id}:${OnDemandAgent.OnDemandType.LoadBalancer}")
   }
 
   @Override
-  String getProviderName() {
-    AzureInfrastructureProvider.PROVIDER_NAME
+  Set<AgentDataType> initializeTypes() {
+    Collections.unmodifiableSet([
+      AUTHORITATIVE.forType(Keys.Namespace.AZURE_APP_GATEWAYS.ns)
+    ] as Set)
   }
 
   @Override
-  String getAgentType() {
-    "${accountName}/${region}/${AzureAppGatewayCachingAgent.simpleName}"
+  Boolean validKeys(Map<String, ? extends Object> data) {
+    data.containsKey("loadBalancerName") &&
+      data.containsKey("account") &&
+      data.containsKey("region") &&
+      accountName == data.account &&
+      region == data.region
   }
 
   @Override
-  String getAccountName() {
-    accountName
-  }
-
-  @Override
-  String getOnDemandAgentType() {
-    "${getAgentType()}-OnDemand"
-  }
-
-  @Override
-  Collection<AgentDataType> getProvidedDataTypes() {
-    return types
+  OnDemandAgent.OnDemandType getOnDemandType() {
+    OnDemandAgent.OnDemandType.LoadBalancer
   }
 
   @Override
@@ -102,11 +90,7 @@ class AzureAppGatewayCachingAgent implements CachingAgent, OnDemandAgent, Accoun
 
   @Override
   OnDemandAgent.OnDemandResult handle(ProviderCache providerCache, Map<String, ? extends Object> data) {
-    if (!data.containsKey("loadBalancerName") ||
-      !data.containsKey("account") ||
-      !data.containsKey("region") ||
-      accountName != data.account ||
-      region != data.region) {
+    if (validKeys(data)) {
       return null
     }
 
