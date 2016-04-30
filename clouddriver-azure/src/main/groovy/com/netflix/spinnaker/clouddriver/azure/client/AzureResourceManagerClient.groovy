@@ -206,8 +206,7 @@ class AzureResourceManagerClient extends AzureBaseClient {
 
     try {
       vNet = creds.networkClient.getVirtualNetwork(resourceGroupName, vNetName)
-      }
-    catch (CloudException ignore) {
+    } catch (CloudException ignore) {
       // Assumes that a cloud exception means that the rest call failed to locate the vNet
       log.warn("Failed to locate Azure Virtual Network ${virtualNetworkName}")
     }

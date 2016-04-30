@@ -175,7 +175,7 @@ public class AzureComputeClient extends AzureBaseClient {
   ServiceResponse<Void> destroyServerGroup(String resourceGroupName, String serverGroupName) {
 
     deleteAzureResource(
-      getScaleSetOps().&delete,
+      scaleSetOps.&delete,
       resourceGroupName,
       serverGroupName,
       null,
@@ -188,7 +188,7 @@ public class AzureComputeClient extends AzureBaseClient {
 
     List<String> instanceIds = this.getServerGroupInstances(resourceGroupName,serverGroupName)?.collect {it.resourceId}
 
-    getScaleSetOps().powerOff(resourceGroupName, serverGroupName, instanceIds)
+    scaleSetOps.powerOff(resourceGroupName, serverGroupName, instanceIds)
 
     // TODO: investigate if we can deallocate the VMs
     //ops.deallocate(resourceGroupName, serverGroupName, instanceIds)
