@@ -148,7 +148,7 @@ class AzureAppGatewayResourceTemplateSpec extends Specification {
     "publicIPAddressID" : "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]",
     "appGwID" : "[resourceId('Microsoft.Network/applicationGateways',variables('appGwName'))]",
     "appGwSubnetID" : "[concat(variables('virtualNetworkID'),'/subnets/',variables('appGwSubnetName'))]",
-    "appGwBeAddrPoolName" : "beaddrpool-default"
+    "appGwBeAddrPoolName" : "default_BAP0"
   },
   "resources" : [ {
     "apiVersion" : "[variables('apiVersion')]",
@@ -320,7 +320,7 @@ class AzureAppGatewayResourceTemplateSpec extends Specification {
     "publicIPAddressID" : "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]",
     "appGwID" : "[resourceId('Microsoft.Network/applicationGateways',variables('appGwName'))]",
     "appGwSubnetID" : "[concat(variables('virtualNetworkID'),'/subnets/',variables('appGwSubnetName'))]",
-    "appGwBeAddrPoolName" : "beaddrpool-default"
+    "appGwBeAddrPoolName" : "default_BAP0"
   },
   "resources" : [ {
     "apiVersion" : "[variables('apiVersion')]",
