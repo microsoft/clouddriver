@@ -172,7 +172,16 @@ public class AzureComputeClient extends AzureBaseClient {
     null
   }
 
+  /**
+   * Get the instances associated with a given server group
+   * @param resourceGroupName - name of the resource group
+   * @param serverGroupName - name of the server group
+   * @return a ServiceResponse object
+   */
   ServiceResponse<Void> destroyServerGroup(String resourceGroupName, String serverGroupName) {
+
+    // remove the ApplicationGatewayBackendAddressPools if any was set
+    setAppGatewayBapEntry(resourceGroupName, serverGroupName, null)
 
     deleteAzureResource(
       scaleSetOps.&delete,
@@ -184,7 +193,35 @@ public class AzureComputeClient extends AzureBaseClient {
     )
   }
 
-  ServiceResponse<Void> disableServerGroup(String resourceGroupName, String serverGroupName) {
+  /**
+   * Get the instances associated with a given server group
+   * @param resourceGroupName - name of the resource group
+   * @param serverGroupName - name of the server group
+   * @param appGatewayBapId - an application gateway backend address pool id that will be associated with the selected server group
+   */
+  void setAppGatewayBapEntry(String resourceGroupName, String serverGroupName, String appGatewayBapId) {
+    if (!serverGroupName) {
+      return
+    }
+
+    def vmss = executeOp({scaleSetOps?.get(resourceGroupName, serverGroupName)})?.body
+
+    if (appGatewayBapId) {
+      vmss.virtualMachineProfile.networkProfile.networkInterfaceConfigurations.first().ipConfigurations.first()
+      // TODO: revisit this code after the JSDK Beta2 upgrade whe we will add support to retrieve the ApplicationgatewayBackendAddressPools object
+      // Add the application Gateway association
+      vmss.tags.appGatewayBapId = appGatewayBapId
+    } else {
+      vmss.virtualMachineProfile.networkProfile.networkInterfaceConfigurations.first().ipConfigurations.first()
+      // TODO: revisit this code after the JSDK Beta2 upgrade whe we will add support to retrieve the ApplicationgatewayBackendAddressPools object
+      // Remove the Application Gateway association
+      vmss.tags.appGatewayBapId = null
+    }
+
+    executeOp({scaleSetOps?.createOrUpdate(resourceGroupName, serverGroupName, vmss)})
+  }
+
+  ServiceResponse<Void> powerOffServerGroup(String resourceGroupName, String serverGroupName) {
 
     List<String> instanceIds = this.getServerGroupInstances(resourceGroupName,serverGroupName)?.collect {it.resourceId}
 
@@ -194,7 +231,7 @@ public class AzureComputeClient extends AzureBaseClient {
     //ops.deallocate(resourceGroupName, serverGroupName, instanceIds)
   }
 
-  ServiceResponse<Void> enableServerGroup(String resourceGroupName, String serverGroupName) {
+  ServiceResponse<Void> powerOnServerGroup(String resourceGroupName, String serverGroupName) {
 
     List<String> instanceIds = this.getServerGroupInstances(resourceGroupName,serverGroupName)?.collect {it.resourceId}
 

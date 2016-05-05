@@ -26,7 +26,7 @@ import com.netflix.spinnaker.clouddriver.azure.resources.servergroup.model.Enabl
 import com.netflix.spinnaker.clouddriver.orchestration.AtomicOperationException
 
 class EnableAzureServerGroupAtomicOperation implements AtomicOperation<Void> {
-  private static final String BASE_PHASE = "DISABLE_SERVER_GROUP"
+  private static final String BASE_PHASE = "ENABLE_SERVER_GROUP"
 
   private static Task getTask() {
     TaskRepository.threadLocalTask.get()
@@ -39,7 +39,7 @@ class EnableAzureServerGroupAtomicOperation implements AtomicOperation<Void> {
   }
 
   /**
-   * curl -X POST -H "Content-Type: application/json" -d '[ { "enableServerGroup": { "serverGroupName": "taz-web1-d1-v000", "name": "taz-web1-d1-v000", "account" : "azure-cred1", "cloudProvider" : "azure", "appName" : "taz", "regions": ["westus"], "credentials": "azure-cred1" }} ]' localhost:7002/ops
+   * curl -X POST -H "Content-Type: application/json" -d '[ { "enableServerGroup": { "serverGroupName": "taz-web1-d1-v000", "name": "taz-web1-d1-v000", "account" : "azure-cred1", "cloudProvider" : "azure", "appName" : "taz", "regions": ["westus"], "credentials": "azure-cred1" }} ]' localhost:7002/azure/ops
    */
   @Override
   Void operate(List priorOutputs) {
@@ -58,6 +58,20 @@ class EnableAzureServerGroupAtomicOperation implements AtomicOperation<Void> {
 
     try {
       String resourceGroupName = AzureUtilities.getResourceGroupName(description.application, region)
+
+/*
+      // Test only
+      description
+        .credentials
+        .networkClient
+        .setProbe(resourceGroupName, serverGroupDescription.appGatewayName)
+//*/
+      // Test only: remove on demand created application gateway backend address pool
+      description
+        .credentials
+        .networkClient
+        .createAppGatewayBAPforServerGroup(resourceGroupName, description.appGatewayName, description.name)
+
       AzureServerGroupDescription serverGroupDescription = description.credentials.computeClient.getServerGroup(resourceGroupName, description.name)
 
       if (!serverGroupDescription) {
@@ -65,12 +79,31 @@ class EnableAzureServerGroupAtomicOperation implements AtomicOperation<Void> {
         errList.add("could not find server group ${description.name} in ${region}")
       } else {
         try {
+/*
+          // Optional: power off the server group instances to save some money
           description
             .credentials
             .computeClient
-            .enableServerGroup(resourceGroupName, description.name)
+            .powerOnServerGroup(resourceGroupName, description.name)
+//*/
 
-          task.updateStatus BASE_PHASE, "Done enabling Azure server group ${description.name} in ${region}."
+/*
+            // On Demand application gateway baclend address pool approach
+            description
+            .credentials
+            .networkClient
+            .enableServerGroup(resourceGroupName,serverGroupDescription.appGatewayName, serverGroupDescription.name)
+//*/
+
+/*
+          // Two application gateway baclend address pool approach
+          description
+            .credentials
+            .networkClient
+            .enableDisableServerGroup(description.credentials, resourceGroupName, serverGroupDescription, true)
+//*/
+
+          task.updateStatus BASE_PHASE, "Done enabling Azure server group ${serverGroupDescription.name} in ${region}."
         } catch (Exception e) {
           task.updateStatus(BASE_PHASE, "Enabling of server group ${description.name} failed: ${e.message}")
           errList.add("Failed to enable server group ${description.name}: ${e.message}")

@@ -39,7 +39,7 @@ class DisableAzureServerGroupAtomicOperation implements AtomicOperation<Void> {
   }
 
   /**
-   * curl -X POST -H "Content-Type: application/json" -d '[ { "disableServerGroup": { "serverGroupName": "taz-web1-d1-v000", "name": "taz-web1-d1-v000", "account" : "azure-cred1", "cloudProvider" : "azure", "appName" : "taz", "regions": ["westus"], "credentials": "azure-cred1" }} ]' localhost:7002/ops
+   * curl -X POST -H "Content-Type: application/json" -d '[ { "disableServerGroup": { "serverGroupName": "taz-web1-d1-v000", "name": "taz-web1-d1-v000", "account" : "azure-cred1", "cloudProvider" : "azure", "appName" : "taz", "regions": ["westus"], "credentials": "azure-cred1" }} ]' localhost:7002/azure/ops
    */
   @Override
   Void operate(List priorOutputs) {
@@ -58,6 +58,13 @@ class DisableAzureServerGroupAtomicOperation implements AtomicOperation<Void> {
 
     try {
       String resourceGroupName = AzureUtilities.getResourceGroupName(description.application, region)
+
+      // Test only: remove on demand created application gateway backend address pool
+      description
+        .credentials
+        .networkClient
+        .removeAppGatewayBAPforServerGroup(resourceGroupName, description.appGatewayName, description.name)
+
       AzureServerGroupDescription serverGroupDescription = description.credentials.computeClient.getServerGroup(resourceGroupName, description.name)
 
       if (!serverGroupDescription) {
@@ -65,17 +72,38 @@ class DisableAzureServerGroupAtomicOperation implements AtomicOperation<Void> {
         errList.add("could not find server group ${description.name} in ${region}")
       } else {
         try {
+/*
+            // On Demand application gateway baclend address pool approach
+            description
+            .credentials
+            .networkClient
+            .disableServerGroup(resourceGroupName,serverGroupDescription.appGatewayName, serverGroupDescription.name)
+//*/
+
+/*
+          // Two application gateway baclend address pool approach
+          description
+            .credentials
+            .networkClient
+            .enableDisableServerGroup(description.credentials, resourceGroupName, serverGroupDescription, false)
+//*/
+
+/*
+          // Optional: power off the server group instances to save some money
           description
             .credentials
             .computeClient
-            .disableServerGroup(resourceGroupName, description.name)
+            .powerOffServerGroup(resourceGroupName, description.name)
+//*/
 
-          task.updateStatus BASE_PHASE, "Done disabling Azure server group ${description.name} in ${region}."
+          task.updateStatus BASE_PHASE, "Done disabling Azure server group ${serverGroupDescription.name} in ${region}."
         } catch (Exception e) {
           task.updateStatus(BASE_PHASE, "Disabling of server group ${description.name} failed: ${e.message}")
           errList.add("Failed to disable server group ${description.name}: ${e.message}")
         }
       }
+
+      task.updateStatus BASE_PHASE, "Done disabling Azure server group ${description.name} in ${region}."
     } catch (Exception e) {
       task.updateStatus(BASE_PHASE, "Disabling server group ${description.name} failed: ${e.message}")
       errList.add("Failed to disable server group ${description.name}: ${e.message}")

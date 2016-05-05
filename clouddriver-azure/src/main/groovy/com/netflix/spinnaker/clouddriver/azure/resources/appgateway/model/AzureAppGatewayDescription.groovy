@@ -28,6 +28,7 @@ class AzureAppGatewayDescription extends AzureResourceOpsDescription {
   String dnsName
   String cluster
   List<String> serverGroups
+  String trafficEnabledSG
   List<AzureAppGatewayHealthcheckProbe> probes = []
   List<AzureAppGatewayRule> rules = []
   // TODO: remove hardcoded sku, tier and capacity
@@ -71,8 +72,12 @@ class AzureAppGatewayDescription extends AzureResourceOpsDescription {
     description.detail = appGateway.tags?.detail ?: parsedName.detail
     description.appName = appGateway.tags?.appName ?: parsedName.app
     description.loadBalancerName = appGateway.name
+
+    description.trafficEnabledSG = appGateway.tags?.trafficEnabledSG
+    // TODO: remove these when cluster and the list of server groups values can be determined via trafficEnabledSG
     description.cluster = appGateway.tags?.cluster
     description.serverGroups = appGateway.tags?.serverGroups?.split(" ")
+
     description.vnet = appGateway.tags?.vnet
     description.createdTime = appGateway.tags?.createdTime?.toLong()
     description.tags = appGateway.tags

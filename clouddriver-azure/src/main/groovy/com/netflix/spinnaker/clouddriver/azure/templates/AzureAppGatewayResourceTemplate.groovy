@@ -85,7 +85,7 @@ class AzureAppGatewayResourceTemplate {
     final String publicIPAddressID = "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
     final String appGwID = "[resourceId('Microsoft.Network/applicationGateways',variables('appGwName'))]"
     final String appGwSubnetID = "[concat(variables('virtualNetworkID'),'/subnets/',variables('appGwSubnetName'))]"
-    final String appGwBeAddrPoolName = "beaddrpool-default"
+    final String appGwBeAddrPoolName = "default_BAP0"
 
     AppGatewayTemplateVariables(AzureAppGatewayDescription description) {
       appGwName = description.name
@@ -144,7 +144,9 @@ class AzureAppGatewayResourceTemplate {
         httpListeners.add(new AppGatewayHttpListener(rule.name, rule.protocol.toString(), rule.sslCertificate))
         requestRoutingRules.add(new AppGatewayRequestRoutingRule(rule.name))
       }
-      backendAddressPools = [new AppGatewayBackendAddressPool()]
+      backendAddressPools = [
+        new AppGatewayBackendAddressPool() // name: "default_BAP0"
+      ]
       description.probes?.each { probe->
         probes.add(new AppGatewayProbe(probe))
       }
@@ -192,7 +194,7 @@ class AzureAppGatewayResourceTemplate {
   }
 
   static class AppGatewayBackendAddressPool {
-    final String name = "[variables('appGwBeAddrPoolName')]"
+    String name = "[variables('appGwBeAddrPoolName')]"
   }
 
   static class AppGatewayBackendHttpSettingsCollection {

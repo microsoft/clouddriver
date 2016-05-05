@@ -43,10 +43,10 @@ class UpsertAzureAppGatewayAtomicOperation implements AtomicOperation<Map> {
   }
 
   /**
-   * curl -X POST -H "Content-Type: application/json" -d '[ { "upsertAppGateway": { "cloudProvider" : "azure", "appName" : "tappgw1", "loadBalancerName" : "tappgw1-st1-d1", "stack" : "st1", "detail" : "d1", "credentials" : "azure-cred1", "region" : "westus", "probes" : [ { "name" : "healthcheck1", "protocol" : "HTTP", "path" : "/healthcheck", "interval" : 120, "unhealthyThreshold" : 8, "timeout" : 30 } ], "rules" : [ { "name" : "lbRule1", "protocol" : "HTTP", "externalPort" : "80", "backendPort" : "8080" }, { "name" : "lbRule2", "protocol" : "HTTP", "externalPort" : "8080", "backendPort" : "8080" } ], "name" : "tappgw1-st1-d1", "user" : "[anonymous]" }} ]' localhost:7002/azure/ops
+   * curl -X POST -H "Content-Type: application/json" -d '[ { "upsertAppGateway": { "cloudProvider" : "azure", "appName" : "tappgw1", "loadBalancerName" : "tappgw1-st1-d1", "stack" : "st1", "detail" : "d1", "credentials" : "azure-cred1", "region" : "westus", "probes" : [ { "name" : "healthcheck1", "protocol" : "HTTP", "host" : "localhost:8080", "path" : "/", "interval" : 120, "unhealthyThreshold" : 8, "timeout" : 30 } ], "rules" : [ { "name" : "lbRule1", "protocol" : "HTTP", "externalPort" : "80", "backendPort" : "8080" }, { "name" : "lbRule2", "protocol" : "HTTP", "externalPort" : "8080", "backendPort" : "8080" } ], "name" : "tappgw1-st1-d1", "user" : "[anonymous]" }} ]' localhost:7002/azure/ops
    *
    * TODO: change ops task name to upserLoadBalancer:
-   * curl -X POST -H "Content-Type: application/json" -d '[ { "upsertLoadBalancer": { "cloudProvider" : "azure", "appName" : "tappgw1", "loadBalancerName" : "tappgw1-st1-d1", "stack" : "st1", "detail" : "d1", "credentials" : "azure-cred1", "region" : "westus", "probes" : [ { "name" : "healthcheck1", "protocol" : "HTTP", "path" : "/healthcheck", "interval" : 120, "unhealthyThreshold" : 8, "timeout" : 30 } ], "rules" : [ { "name" : "lbRule1", "protocol" : "HTTP", "externalPort" : "80", "backendPort" : "8080" }, { "name" : "lbRule2", "protocol" : "HTTP", "externalPort" : "8080", "backendPort" : "8080" } ], "name" : "tappgw1-st1-d1", "user" : "[anonymous]" }} ]' localhost:7002/azure/ops
+   * curl -X POST -H "Content-Type: application/json" -d '[ { "upsertLoadBalancer": { "cloudProvider" : "azure", "appName" : "tappgw1", "loadBalancerName" : "tappgw1-st1-d1", "stack" : "st1", "detail" : "d1", "credentials" : "azure-cred1", "region" : "westus", "probes" : [ { "name" : "healthcheck1", "protocol" : "HTTP", "host" : "localhost:8080", "path" : "/", "interval" : 120, "unhealthyThreshold" : 8, "timeout" : 30 } ], "rules" : [ { "name" : "lbRule1", "protocol" : "HTTP", "externalPort" : "80", "backendPort" : "8080" }, { "name" : "lbRule2", "protocol" : "HTTP", "externalPort" : "8080", "backendPort" : "8080" } ], "name" : "tappgw1-st1-d1", "user" : "[anonymous]" }} ]' localhost:7002/azure/ops
    *
    * @param priorOutputs
    * @return
@@ -111,28 +111,6 @@ class UpsertAzureAppGatewayAtomicOperation implements AtomicOperation<Map> {
           "appGateway")
 
         errList = AzureDeploymentOperation.checkDeploymentOperationStatus(task, BASE_PHASE, description.credentials, resourceGroupName, deployment.name)
-
-        String appGateBAP = description.credentials.networkClient.createAppGatewayBAPforServerGroup(resourceGroupName, description.name, "tappgw1-sg1-d1-v000")
-        task.updateStatus(BASE_PHASE, "Application Gateway BAP was created: ${appGateBAP}")
-        appGateBAP = description.credentials.networkClient.createAppGatewayBAPforServerGroup(resourceGroupName, description.name, "tappgw1-sg1-d1-v001")
-        task.updateStatus(BASE_PHASE, "Application Gateway BAP was created: ${appGateBAP}")
-        appGateBAP = description.credentials.networkClient.createAppGatewayBAPforServerGroup(resourceGroupName, description.name, "tappgw1-sg1-d1-v002")
-        task.updateStatus(BASE_PHASE, "Application Gateway BAP was created: ${appGateBAP}")
-        appGateBAP = description.credentials.networkClient.createAppGatewayBAPforServerGroup(resourceGroupName, description.name, "tappgw1-sg1-d1-v003")
-        task.updateStatus(BASE_PHASE, "Application Gateway BAP was created: ${appGateBAP}")
-        appGateBAP = description.credentials.networkClient.createAppGatewayBAPforServerGroup(resourceGroupName, description.name, "tappgw1-sg1-d1-v004")
-        task.updateStatus(BASE_PHASE, "Application Gateway BAP was created: ${appGateBAP}")
-        appGateBAP = description.credentials.networkClient.createAppGatewayBAPforServerGroup(resourceGroupName, description.name, "tappgw1-sg1-d1-v005")
-        task.updateStatus(BASE_PHASE, "Application Gateway BAP was created: ${appGateBAP}")
-        appGateBAP = description.credentials.networkClient.createAppGatewayBAPforServerGroup(resourceGroupName, description.name, "tappgw1-sg1-d1-v006")
-        task.updateStatus(BASE_PHASE, "Application Gateway BAP was created: ${appGateBAP}")
-        appGateBAP = description.credentials.networkClient.createAppGatewayBAPforServerGroup(resourceGroupName, description.name, "tappgw1-sg1-d1-v007")
-        task.updateStatus(BASE_PHASE, "Application Gateway BAP was created: ${appGateBAP}")
-        appGateBAP = description.credentials.networkClient.createAppGatewayBAPforServerGroup(resourceGroupName, description.name, "tappgw1-sg1-d1-v008")
-        task.updateStatus(BASE_PHASE, "Application Gateway BAP was created: ${appGateBAP}")
-        appGateBAP = description.credentials.networkClient.createAppGatewayBAPforServerGroup(resourceGroupName, description.name, "tappgw1-sg1-d1-v009")
-        task.updateStatus(BASE_PHASE, "Application Gateway BAP was created: ${appGateBAP}")
-
         loadBalancerName = description.name
       }
     } catch (CloudException ce) {
