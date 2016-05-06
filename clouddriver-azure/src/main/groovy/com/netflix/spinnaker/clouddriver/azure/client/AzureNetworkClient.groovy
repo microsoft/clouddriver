@@ -46,6 +46,7 @@ import com.netflix.spinnaker.clouddriver.azure.resources.securitygroup.model.Azu
 import com.netflix.spinnaker.clouddriver.azure.resources.servergroup.model.AzureServerGroupDescription
 import com.netflix.spinnaker.clouddriver.azure.resources.subnet.model.AzureSubnetDescription
 import com.netflix.spinnaker.clouddriver.azure.security.AzureCredentials
+import com.netflix.spinnaker.clouddriver.azure.templates.AzureAppGatewayResourceTemplate
 import groovy.util.logging.Slf4j
 import okhttp3.logging.HttpLoggingInterceptor
 
@@ -439,6 +440,10 @@ class AzureNetworkClient extends AzureBaseClient {
       appGateway.requestRoutingRules.each {
         it.backendAddressPool.id = agBAP.id
       }
+
+      // Store active server group in the tags map to ease debugging the operation; we will clean this later
+      appGateway.tags.trafficEnabledSG = serverGroupName
+
       return appGatewayOps.createOrUpdate(resourceGroupName, appGatewayName, appGateway)
     }
 
@@ -453,14 +458,14 @@ class AzureNetworkClient extends AzureBaseClient {
    * @return a ServiceResponse object
    */
   ServiceResponse disableServerGroup(String resourceGroupName, String appGatewayName, String serverGroupName) {
-    String defaultBAP = "beaddrpool-default"
+    String defaultBAP = AzureAppGatewayResourceTemplate.defaultAppGatewayBeAddrPoolName
     def appGateway = executeOp({appGatewayOps.get(resourceGroupName, appGatewayName)})?.body
 
     if (appGateway) {
       // TODO: should we switch to the default backend address pool?
       def agBAP = appGateway.backendAddressPools?.find { it.name == defaultBAP}
       if (!agBAP) {
-        // TODO: create a default backend address pool if it does not exist
+        // TODO: we could recreate a default backend address pool if one does not exist
         // agBAP = new ApplicationGatewayBackendAddressPool(
         //   name: defaultBAP,
         //   id: "${appGateway.id}/backendAddressPools/${defaultBAP}"
@@ -475,6 +480,10 @@ class AzureNetworkClient extends AzureBaseClient {
       appGateway.requestRoutingRules.each {
         it.backendAddressPool.id = agBAP.id
       }
+
+      // Clear active server group (if any) from the tags map to ease debugging the operation; we will clean this later
+      appGateway.tags.trafficEnabledSG = null
+
       return appGatewayOps.createOrUpdate(resourceGroupName, appGatewayName, appGateway)
     }
 

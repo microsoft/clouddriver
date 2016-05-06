@@ -72,6 +72,8 @@ class AzureAppGatewayResourceTemplate {
     Map<String, String> metadata = ["description":"Location to deploy"]
   }
 
+  static final String defaultAppGatewayBeAddrPoolName = "default_BAP0"
+
   static class AppGatewayTemplateVariables {
     final String apiVersion = "2015-06-15"
     String appGwName
@@ -85,7 +87,7 @@ class AzureAppGatewayResourceTemplate {
     final String publicIPAddressID = "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
     final String appGwID = "[resourceId('Microsoft.Network/applicationGateways',variables('appGwName'))]"
     final String appGwSubnetID = "[concat(variables('virtualNetworkID'),'/subnets/',variables('appGwSubnetName'))]"
-    final String appGwBeAddrPoolName = "default_BAP0"
+    final String appGwBeAddrPoolName = defaultAppGatewayBeAddrPoolName
 
     AppGatewayTemplateVariables(AzureAppGatewayDescription description) {
       appGwName = description.name
