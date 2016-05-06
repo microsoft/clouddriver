@@ -402,10 +402,10 @@ class AzureNetworkClient extends AzureBaseClient {
       }
       def agBAP = appGateway.backendAddressPools?.find { it.name == serverGroupName}
       if (agBAP) {
-        agDescription.serverGroups.remove(serverGroupName)
-        if (agDescription.serverGroups.isEmpty()) {
-          appGateway.tags.serverGroups = null
-          appGateway.tags.cluster = null
+        agDescription.serverGroups?.remove(serverGroupName)
+        if (!agDescription.serverGroups || agDescription.serverGroups.isEmpty()) {
+          appGateway.tags.remove("serverGroups")
+          appGateway.tags.remove("cluster")
         } else {
           appGateway.tags.serverGroups = agDescription.serverGroups.join(" ")
         }
@@ -482,7 +482,7 @@ class AzureNetworkClient extends AzureBaseClient {
       }
 
       // Clear active server group (if any) from the tags map to ease debugging the operation; we will clean this later
-      appGateway.tags.trafficEnabledSG = null
+      appGateway.tags.remove("trafficEnabledSG")
 
       return appGatewayOps.createOrUpdate(resourceGroupName, appGatewayName, appGateway)
     }
@@ -546,8 +546,13 @@ class AzureNetworkClient extends AzureBaseClient {
     // set/create an ApplicationGatewayBackendAddressPools in the selected server group
     creds.computeClient.setAppGatewayBapEntry(resourceGroupName, serverGroupDescription.name, agBapSpare.id)
 
-    appGateway.tags.trafficEnabledSG = serverGroupDescription.name
-    appGateway.tags.cluster = serverGroupDescription.clusterName
+    if (isEnabled) {
+      appGateway.tags.trafficEnabledSG = serverGroupDescription.name
+      appGateway.tags.cluster = serverGroupDescription.clusterName
+    } else {
+      appGateway.tags.remove("trafficEnabledSG")
+      appGateway.tags.remove("cluster")
+    }
 
     appGatewayOps.createOrUpdate(resourceGroupName, appGateway.name, appGateway)
 
