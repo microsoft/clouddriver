@@ -66,11 +66,14 @@ class EnableAzureServerGroupAtomicOperation implements AtomicOperation<Void> {
         .networkClient
         .setProbe(resourceGroupName, serverGroupDescription.appGatewayName)
 //*/
+
+/*
       // Test only: remove on demand created application gateway backend address pool
       description
         .credentials
         .networkClient
         .createAppGatewayBAPforServerGroup(resourceGroupName, description.appGatewayName, description.name)
+//*/
 
       AzureServerGroupDescription serverGroupDescription = description.credentials.computeClient.getServerGroup(resourceGroupName, description.name)
 
@@ -80,15 +83,15 @@ class EnableAzureServerGroupAtomicOperation implements AtomicOperation<Void> {
       } else {
         try {
 /*
-          // Optional: power off the server group instances to save some money
+          // Optional: power on the server group instances if they were powered off (less cost)
           description
             .credentials
             .computeClient
             .powerOnServerGroup(resourceGroupName, description.name)
 //*/
 
-/*
-            // On Demand application gateway baclend address pool approach
+///*
+            // On Demand application gateway backend address pool approach
             description
             .credentials
             .networkClient
@@ -96,7 +99,7 @@ class EnableAzureServerGroupAtomicOperation implements AtomicOperation<Void> {
 //*/
 
 /*
-          // Two application gateway baclend address pool approach
+          // Two application gateway backend address pool approach
           description
             .credentials
             .networkClient

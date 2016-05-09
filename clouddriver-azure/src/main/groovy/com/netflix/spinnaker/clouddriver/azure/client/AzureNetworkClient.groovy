@@ -48,6 +48,9 @@ import com.netflix.spinnaker.clouddriver.azure.resources.subnet.model.AzureSubne
 import com.netflix.spinnaker.clouddriver.azure.security.AzureCredentials
 import com.netflix.spinnaker.clouddriver.azure.templates.AzureAppGatewayResourceTemplate
 import groovy.util.logging.Slf4j
+import okhttp3.Interceptor
+import okhttp3.Request
+import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
 
 @Slf4j
@@ -371,9 +374,10 @@ class AzureNetworkClient extends AzureBaseClient {
         } else {
           agDescription.serverGroups = [serverGroupName]
         }
-        appGateway.tags.serverGroups = agDescription.serverGroups.join(" ")
         appGateway.tags.cluster = parsedName.cluster
-        appGatewayOps.createOrUpdate(resourceGroupName, appGatewayName, appGateway)
+        // TODO: debug only; remove this as part of the cleanup
+        appGateway.tags.serverGroups = agDescription.serverGroups.join(" ")
+        executeOp({appGatewayOps.createOrUpdate(resourceGroupName, appGatewayName, appGateway)})
       }
 
       return "${appGateway.id}/backendAddressPools/${serverGroupName}"
@@ -402,15 +406,22 @@ class AzureNetworkClient extends AzureBaseClient {
       }
       def agBAP = appGateway.backendAddressPools?.find { it.name == serverGroupName}
       if (agBAP) {
+        appGateway.backendAddressPools.remove(agBAP)
+        if (appGateway.backendAddressPools.size() == 1) {
+          // There are no server groups assigned to ths application gateway; we can make it available now
+          appGateway.tags.remove("cluster")
+        }
+
+        // TODO: debug only; remove this as part of the cleanup
         agDescription.serverGroups?.remove(serverGroupName)
         if (!agDescription.serverGroups || agDescription.serverGroups.isEmpty()) {
           appGateway.tags.remove("serverGroups")
-          appGateway.tags.remove("cluster")
         } else {
+          appGateway.tags.remove("serverGroups")
           appGateway.tags.serverGroups = agDescription.serverGroups.join(" ")
         }
-        appGateway.backendAddressPools.remove(agBAP)
-        appGatewayOps.createOrUpdate(resourceGroupName, appGatewayName, appGateway)
+
+        executeOp({appGatewayOps.createOrUpdate(resourceGroupName, appGatewayName, appGateway)})
       }
 
       return "${appGateway.id}/backendAddressPools/${serverGroupName}"
@@ -444,7 +455,7 @@ class AzureNetworkClient extends AzureBaseClient {
       // Store active server group in the tags map to ease debugging the operation; we will clean this later
       appGateway.tags.trafficEnabledSG = serverGroupName
 
-      return appGatewayOps.createOrUpdate(resourceGroupName, appGatewayName, appGateway)
+      return executeOp({appGatewayOps.createOrUpdate(resourceGroupName, appGatewayName, appGateway)})
     }
 
     null
@@ -462,16 +473,8 @@ class AzureNetworkClient extends AzureBaseClient {
     def appGateway = executeOp({appGatewayOps.get(resourceGroupName, appGatewayName)})?.body
 
     if (appGateway) {
-      // TODO: should we switch to the default backend address pool?
       def agBAP = appGateway.backendAddressPools?.find { it.name == defaultBAP}
       if (!agBAP) {
-        // TODO: we could recreate a default backend address pool if one does not exist
-        // agBAP = new ApplicationGatewayBackendAddressPool(
-        //   name: defaultBAP,
-        //   id: "${appGateway.id}/backendAddressPools/${defaultBAP}"
-        // )
-        // appGateway.backendAddressPools.add(agBAP)
-
         def errMsg = "Backend address pool ${serverGroupName} not found in ${appGatewayName}"
         log.error(errMsg)
         throw new RuntimeException(errMsg)
@@ -484,11 +487,15 @@ class AzureNetworkClient extends AzureBaseClient {
       // Clear active server group (if any) from the tags map to ease debugging the operation; we will clean this later
       appGateway.tags.remove("trafficEnabledSG")
 
-      return appGatewayOps.createOrUpdate(resourceGroupName, appGatewayName, appGateway)
+      return executeOp({appGatewayOps.createOrUpdate(resourceGroupName, appGatewayName, appGateway)})
     }
 
     null
   }
+
+//********************************************************************************************************************//
+// Temporary function to set application gateway properties
+//********************************************************************************************************************//
 
   void setProbe(String resourceGroupName, String appGatewayName) {
     def appGateway = executeOp({appGatewayOps.get(resourceGroupName, appGatewayName)})?.body
@@ -497,7 +504,7 @@ class AzureNetworkClient extends AzureBaseClient {
       appGateway.probes.first().host = "www.bing.com"
       appGateway.probes.first().path = "/"
       appGateway.probes.first().timeout = 120
-      appGatewayOps.createOrUpdate(resourceGroupName, appGatewayName, appGateway)
+      executeOp({appGatewayOps.createOrUpdate(resourceGroupName, appGatewayName, appGateway)})
     }
   }
 
@@ -554,7 +561,7 @@ class AzureNetworkClient extends AzureBaseClient {
       appGateway.tags.remove("cluster")
     }
 
-    appGatewayOps.createOrUpdate(resourceGroupName, appGateway.name, appGateway)
+    executeOp({appGatewayOps.createOrUpdate(resourceGroupName, appGateway.name, appGateway)})
 
     // remove the ApplicationGatewayBackendAddressPools in the selected server group
     creds.computeClient.setAppGatewayBapEntry(resourceGroupName, trafficEnabledSG, null)
@@ -916,6 +923,17 @@ class AzureNetworkClient extends AzureBaseClient {
     NetworkManagementClient networkManagementClient = new NetworkManagementClientImpl(tokenCredentials)
     networkManagementClient.setSubscriptionId(this.subscriptionId)
     networkManagementClient.setLogLevel(HttpLoggingInterceptor.Level.NONE)
+
+    // TODO: work around for SDK issue; not all the API's will accept same client-request-id
+    networkManagementClient.getClientInterceptors().add(new Interceptor() {
+      @Override
+      Response intercept(Interceptor.Chain chain) throws IOException {
+        Request.Builder builder = chain.request().newBuilder()
+        builder.header("x-ms-client-request-id", UUID.randomUUID().toString())
+        return chain.proceed(builder.build())
+      }
+    })
+
     networkManagementClient
   }
 

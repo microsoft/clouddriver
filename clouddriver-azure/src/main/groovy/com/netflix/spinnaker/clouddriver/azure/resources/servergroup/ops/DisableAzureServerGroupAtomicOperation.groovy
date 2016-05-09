@@ -59,11 +59,13 @@ class DisableAzureServerGroupAtomicOperation implements AtomicOperation<Void> {
     try {
       String resourceGroupName = AzureUtilities.getResourceGroupName(description.application, region)
 
+/*
       // Test only: remove on demand created application gateway backend address pool
       description
         .credentials
         .networkClient
         .removeAppGatewayBAPforServerGroup(resourceGroupName, description.appGatewayName, description.name)
+//*/
 
       AzureServerGroupDescription serverGroupDescription = description.credentials.computeClient.getServerGroup(resourceGroupName, description.name)
 
@@ -72,8 +74,8 @@ class DisableAzureServerGroupAtomicOperation implements AtomicOperation<Void> {
         errList.add("could not find server group ${description.name} in ${region}")
       } else {
         try {
-/*
-            // On Demand application gateway baclend address pool approach
+///*
+            // On Demand application gateway backend address pool approach
             description
             .credentials
             .networkClient
@@ -81,7 +83,7 @@ class DisableAzureServerGroupAtomicOperation implements AtomicOperation<Void> {
 //*/
 
 /*
-          // Two application gateway baclend address pool approach
+          // Two application gateway backend address pool approach
           description
             .credentials
             .networkClient

@@ -19,6 +19,7 @@ package com.netflix.spinnaker.clouddriver.azure.resources.appgateway.model
 import com.microsoft.azure.management.network.models.ApplicationGateway
 import com.netflix.frigga.Names
 import com.netflix.spinnaker.clouddriver.azure.resources.common.AzureResourceOpsDescription
+import com.netflix.spinnaker.clouddriver.azure.templates.AzureAppGatewayResourceTemplate
 
 class AzureAppGatewayDescription extends AzureResourceOpsDescription {
   String loadBalancerName
@@ -74,9 +75,13 @@ class AzureAppGatewayDescription extends AzureResourceOpsDescription {
     description.loadBalancerName = appGateway.name
 
     description.trafficEnabledSG = appGateway.tags?.trafficEnabledSG
-    // TODO: remove these when cluster and the list of server groups values can be determined via trafficEnabledSG
     description.cluster = appGateway.tags?.cluster
-    description.serverGroups = appGateway.tags?.serverGroups?.split(" ")
+
+    // Each application gateway backend address pool corresponds to a server group (except the defaul BAP)
+    description.serverGroups = []
+    appGateway.backendAddressPools?.each { bap ->
+      if (bap.name != AzureAppGatewayResourceTemplate.defaultAppGatewayBeAddrPoolName) description.serverGroups << bap.name
+    }
 
     description.vnet = appGateway.tags?.vnet
     description.createdTime = appGateway.tags?.createdTime?.toLong()
