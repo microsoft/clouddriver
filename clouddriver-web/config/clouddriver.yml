@@ -10,7 +10,7 @@ redis:
 
 services:
   front50:
-    baseUrl: http://localhost:8080
+    baseUrl: http://localhost:9080
 
 swagger:
   enabled: true
@@ -57,7 +57,8 @@ aws:
   #  proxyWorkstation: foo
   #  protocol: HTTP
   defaults:
-    iamRole: FooRole
+    name: default
+    iamRole: BaseIAMRole_2
     instanceClassBlockDevices:
     - instanceClass: m3
       blockDevices:
@@ -66,8 +67,8 @@ aws:
       - deviceName: /dev/sdc
         virtualName: ephemeral1
   defaultRegions:
-    - name: us-east-1
-  defaultKeyPairTemplate: '{{name}}-keypair'
+    - name: us-west-2
+  defaultKeyPairTemplate: 'milismsft-keypair'
 
   # an empty list means we are directly managing the AWS account we have credentials for (named default.account.env)
   # see prod profile section below for an example configuration to manage other accounts via STS assume role
@@ -78,7 +79,7 @@ azure:
   defaults:
 
   accounts:
-    - name: my-azure-account
+    - name: azure-cred1
       clientId: ${AZURE_CLIENT_ID}
       appKey: ${AZURE_APPKEY}
       tenantId: ${AZURE_TENANT_ID}
@@ -109,18 +110,19 @@ azure:
         offer: "SLES"
         sku: "12-SP1"
         version: "2015.12.15"
-  # Example how to set the Azure storage connection string related entries for retrieving the list of available custom VM images,
-  #  where "scs" represents the Azure Storage connection string and "blobDir" is the relative path to the custom images container
-  #
-  #    customImages:
-  #    - scs: ${AZURE_SCS1}
-  #      blobDir: "system/Microsoft.Compute/Images/vhds"
-  #      osType: "Windows"
-  #      region: "westus"
-  #    - scs: ${AZURE_SCS2}
-  #      blobDir: "vhds"
-  #      osType: "Linux"
-  #      region: "westus"
+      customImages:
+      - scs: "DefaultEndpointsProtocol=https;AccountName=jenkinsvmv0;AccountKey=9j6xp/+/m3LePd4NzUdw3kRk4OjDRI/5qoNc1Dwn6Fw/Blo68MPHzFqzxhoinHUkjNNf+7F+zKfK23/n6wJmPA=="
+        blobDir: "webappv1"
+        osType: "Linux"
+        region: "westus"
+      - scs: "DefaultEndpointsProtocol=https;AccountName=jenkinsvmv0;AccountKey=9j6xp/+/m3LePd4NzUdw3kRk4OjDRI/5qoNc1Dwn6Fw/Blo68MPHzFqzxhoinHUkjNNf+7F+zKfK23/n6wJmPA=="
+        blobDir: "webappv2"
+        osType: "Linux"
+        region: "westus"
+      - scs: "DefaultEndpointsProtocol=https;AccountName=abakerrg8965;AccountKey=7BsgvFlbcvbnpBed0ko0/fJb1y5VsyqxnNq67I60zcUDJ+GIF1/J0+2FSuzvhUHaTw1XLJrex92OQ4Ayw0eQAQ=="
+        blobDir: "windowsvhd"
+        osType: "Windows"
+        region: "westus"
 
 google:
   enabled: false

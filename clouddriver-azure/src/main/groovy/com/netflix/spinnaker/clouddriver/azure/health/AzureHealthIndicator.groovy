@@ -61,10 +61,6 @@ class AzureHealthIndicator implements HealthIndicator {
         it instanceof AzureNamedAccountCredentials
       } as Set<AzureNamedAccountCredentials>
 
-      if (!azureCredentialsSet) {
-        throw new AzureCredentialsNotFoundException()
-      }
-
       for (AzureNamedAccountCredentials accountCredentials in azureCredentialsSet) {
         try {
           // This verifies that the specified credentials are sufficient to access the referenced project.
