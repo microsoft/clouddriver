@@ -25,6 +25,7 @@ swagger:
     - .*security.*
     - .*vpcs.*
     - .*credentials.*
+    - .*networks.*
     - .*subnets.*
     - .*ops.*
     - .*task.*
@@ -111,18 +112,18 @@ azure:
         sku: "12-SP1"
         version: "2015.12.15"
       customImages:
-      - scs: "DefaultEndpointsProtocol=https;AccountName=jenkinsvmv0;AccountKey=9j6xp/+/m3LePd4NzUdw3kRk4OjDRI/5qoNc1Dwn6Fw/Blo68MPHzFqzxhoinHUkjNNf+7F+zKfK23/n6wJmPA=="
-        blobDir: "webappv1"
+      - scs: "somekey"
+        blobDir: "webapp1"
         osType: "Linux"
         region: "westus"
-      - scs: "DefaultEndpointsProtocol=https;AccountName=jenkinsvmv0;AccountKey=9j6xp/+/m3LePd4NzUdw3kRk4OjDRI/5qoNc1Dwn6Fw/Blo68MPHzFqzxhoinHUkjNNf+7F+zKfK23/n6wJmPA=="
-        blobDir: "webappv2"
+      - scs: "somekey"
+        blobDir: "webapp2"
         osType: "Linux"
         region: "westus"
-      - scs: "DefaultEndpointsProtocol=https;AccountName=abakerrg8965;AccountKey=7BsgvFlbcvbnpBed0ko0/fJb1y5VsyqxnNq67I60zcUDJ+GIF1/J0+2FSuzvhUHaTw1XLJrex92OQ4Ayw0eQAQ=="
-        blobDir: "windowsvhd"
-        osType: "Windows"
-        region: "westus"
+      - scs: "somekey"
+        blobDir: "webapp1"
+        osType: "Linux"
+        region: "eastus"
 
 google:
   enabled: false
@@ -259,7 +260,7 @@ openstack:
   accounts:
     - name: test
       environment: test
-      accountType: v2
+      accountType: main
       master: test
       username: ${OS_USERNAME:'username'}
       password: ${OS_PASSWORD:'password'}
@@ -268,6 +269,10 @@ openstack:
       endpoint: ${OS_AUTH_URL:''}
       regions: ${OS_REGIONS:''}
       insecure: ${OS_INSECURE:false}
+      heatTemplatePath: /path/to/custom/heat/template(s)
+      lbaas:
+        pollTimeout: ${OS_LBAAS_POLL_TIMEOUT:60}
+        pollInterval: ${OS_LBAAS_POLL_INTERVAL:5}
 
 kubernetes:
   enabled: false
@@ -290,7 +295,7 @@ cf:
       password: ${cf.account.password}
       artifactUsername: ${cf.repo.username}
       artifactPassword: ${cf.repo.password}
- 
+
 spring:
   jackson:
     mapper:
