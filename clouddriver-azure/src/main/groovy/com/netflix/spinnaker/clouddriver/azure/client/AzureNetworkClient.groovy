@@ -152,7 +152,7 @@ class AzureNetworkClient extends AzureBaseClient {
       throw new RuntimeException("Unexpected number of public IP addresses associated with the load balancer (should always be only one)!")
     }
 
-    def publicIpAddressName = AzureUtilities.getResourceNameFromID(loadBalancer.frontendIPConfigurations.first().getPublicIPAddress().id)
+    def publicIpAddressName = AzureUtilities.getNameFromId(loadBalancer.frontendIPConfigurations.first().getPublicIPAddress().id)
 
     deleteAzureResource(
       loadBalancerOps.&delete,
@@ -266,7 +266,7 @@ class AzureNetworkClient extends AzureBaseClient {
 
     // TODO: retrieve private IP address name when support for it is added
     // First item in the application gateway frontend IP configurations is the public IP address we are loking for
-    def publicIpAddressName = AzureUtilities.getResourceNameFromID(appGateway?.frontendIPConfigurations?.first()?.getPublicIPAddress()?.id)
+    def publicIpAddressName = AzureUtilities.getNameFromId(appGateway?.frontendIPConfigurations?.first()?.getPublicIPAddress()?.id)
 
     result = deleteAzureResource(
       appGatewayOps.&delete,

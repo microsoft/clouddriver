@@ -39,7 +39,7 @@ class AzureUtilities {
   static final String VNET_DEFAULT_ADDRESS_PREFIX = "10.0.0.0/8"
   static final int SUBNET_DEFAULT_ADDRESS_PREFIX_LENGTH = 24
 
-  static String getResourceNameFromID(String resourceId) {
+  static String getNameFromId(String resourceId) {
     if (resourceId == null) {
       return null
     }

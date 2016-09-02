@@ -52,7 +52,7 @@ class AzureSubnetDescription extends AzureResourceOpsDescription {
     subnet.ipConfigurations?.each {resourceId ->
       description.ipConfigurations += resourceId.id
       description.connectedDevices += new SubnetConnectedDevices(
-        name: AzureUtilities.getResourceNameFromID(resourceId.id),
+        name: AzureUtilities.getNameFromId(resourceId.id),
         resourceId: resourceId.id,
         type: AzureUtilities.getResourceTypeFromId(resourceId.id)
       )

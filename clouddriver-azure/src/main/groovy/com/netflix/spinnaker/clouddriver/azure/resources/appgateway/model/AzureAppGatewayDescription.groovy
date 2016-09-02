@@ -96,10 +96,10 @@ class AzureAppGatewayDescription extends AzureResourceOpsDescription {
     // We only support one subnet so we can just retrieve the first one
     def subnetId = appGateway?.gatewayIPConfigurations?.first()?.subnet?.id
     description.subnet = AzureUtilities.getNameFromResourceId(subnetId)
-    description.vnet = AzureUtilities.getResourceNameFromID(subnetId)
+    description.vnet = AzureUtilities.getResourceNameFromId(subnetId)
     description.hasNewSubnet = appGateway.tags?.hasNewSubnet
 
-    description.publicIpName = AzureUtilities.getResourceNameFromID(appGateway?.frontendIPConfigurations?.first()?.getPublicIPAddress()?.id)
+    description.publicIpName = AzureUtilities.getNameFromId(appGateway?.frontendIPConfigurations?.first()?.getPublicIPAddress()?.id)
     description.createdTime = appGateway.tags?.createdTime?.toLong()
     description.tags = appGateway.tags ?: [:]
     description.region = appGateway.location
