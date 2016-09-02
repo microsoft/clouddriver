@@ -104,12 +104,37 @@ class AzureUtilities {
     azureResourceName.split(NAME_SEPARATOR).first()
   }
 
+  // ResourceId = "/subscriptions/***-***-***/resourceGroups/***/providers/Microsoft.Network/networkInterfaces/nic1"
   static String getNameFromResourceId(String resourceId) {
     if (resourceId == null) {
       return null
     }
 
     resourceId.split(PATH_SEPARATOR).last()
+  }
+
+  // id = "/subscriptions/***-***-***/resourceGroups/***/providers/Microsoft.Network/networkInterfaces/nic1/ipConfigurations/ipconfig1"
+  static String getResourceNameFromId(String id) {
+    if (id == null) {
+      return null
+    }
+
+    def vals = id.split(PATH_SEPARATOR)
+    int idx = vals.findIndexOf { it == "Microsoft.Network"}
+
+    vals[idx + 2]
+  }
+
+  // id = "/subscriptions/***-***-***/resourceGroups/***/providers/Microsoft.Network/networkInterfaces/nic1/ipConfigurations/ipconfig1"
+  static String getResourceTypeFromId(String id) {
+    if (id == null) {
+      return null
+    }
+
+    def vals = id.split(PATH_SEPARATOR)
+    int idx = vals.findIndexOf { it == "Microsoft.Network"}
+
+    vals[idx + 1]
   }
 
   private static boolean validateIpv4PrefixMatch(Matcher matchResult) {

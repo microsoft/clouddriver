@@ -734,7 +734,12 @@ class AzureNetworkClient extends AzureBaseClient {
             }
 
             def vnet = AzureVirtualNetworkDescription.getDescriptionForVirtualNetwork(item)
-            vnet.subnets = AzureSubnetDescription.getSubnetsForVirtualNetwork(item, currentTime)
+            vnet.subnets = AzureSubnetDescription.getSubnetsForVirtualNetwork(item)
+
+            //
+            def appGateways = executeOp({appGatewayOps.listAll()})?.body
+            AzureSubnetDescription.getAppGatewaysConnectedResources(vnet, appGateways.findAll {it.location == region})
+
             vnet.lastReadTime = currentTime
             result += vnet
           } catch (RuntimeException re) {
