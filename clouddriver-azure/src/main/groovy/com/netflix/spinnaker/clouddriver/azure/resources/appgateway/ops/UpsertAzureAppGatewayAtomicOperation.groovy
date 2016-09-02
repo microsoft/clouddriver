@@ -63,6 +63,7 @@ class UpsertAzureAppGatewayAtomicOperation implements AtomicOperation<Map> {
     String resourceGroupName = null
     String virtualNetworkName = null
     String subnetName = null
+    String subnetId
     String loadBalancerName = null
 
     try {
@@ -98,49 +99,75 @@ class UpsertAzureAppGatewayAtomicOperation implements AtomicOperation<Map> {
         // We are attempting to create a new application gateway
         description.credentials.resourceManagerClient.initializeResourceGroupAndVNet(description.credentials, resourceGroupName, virtualNetworkName, description.region)
 
-        task.updateStatus(BASE_PHASE, "Creating subnet for application gateway")
+        if (description.vnet) {
+          task.updateStatus(BASE_PHASE, "Using virtual network $description.vnet and subnet $description.subnet for server group $description.name")
 
-        // Compute the next subnet address prefix using the cached vnet and a random generated seed
-        def vnetDescription = networkProvider.get(description.accountName, description.region, virtualNetworkName)
-        Random rand = new Random()
-        def nextSubnetAddressPrefix = AzureVirtualNetworkDescription.getNextSubnetAddressPrefix(vnetDescription, rand.nextInt(vnetDescription?.maxSubnets ?: 1))
-        subnetName = AzureUtilities.getSubnetName(virtualNetworkName, nextSubnetAddressPrefix)
+          // we will try to associate the server group with the selected virtual network and subnet
+          description.hasNewSubnet = false
 
-        // we'll do a final check to make sure that the subnet can be created before we pass it in the deployment template
-        def vnet = description.credentials.networkClient.getVirtualNetwork(resourceGroupName, virtualNetworkName)
+          def vnetDescription = networkProvider.get(description.accountName, description.region, description.vnet)
 
-        if (!subnetName || vnet?.subnets?.find {it.name == subnetName}) {
-          // virtualNetworkName is not yet in the cache or the subnet we try to create already exists; we'll use the current vnet
-          //   we just got to re-compute the next subnet
-          vnetDescription = AzureVirtualNetworkDescription.getDescriptionForVirtualNetwork(vnet)
-          nextSubnetAddressPrefix = AzureVirtualNetworkDescription.getNextSubnetAddressPrefix(vnetDescription, rand.nextInt(vnetDescription?.maxSubnets ?: 1))
-          subnetName = AzureUtilities.getSubnetName(virtualNetworkName, nextSubnetAddressPrefix)
-        }
+          if (!vnetDescription) {
+            throw new RuntimeException("Selected virtual network $description.vnet does not exist")
+          }
 
-        task.updateStatus(BASE_PHASE, "Creating new subnet ${subnetName} for ${description.loadBalancerName}")
-        def subnetId = description.credentials.networkClient.createSubnet(resourceGroupName,
-          virtualNetworkName,
-          subnetName,
-          nextSubnetAddressPrefix,
-          description.securityGroup)
+          // subnet is valid only if it exists within the selected vnet and it's unassigned or all the associations are ALSO application gateways
+          subnetId = vnetDescription.subnets?.find { subnet ->
+            (subnet.name == description.subnet) && (!subnet.connectedDevices || !subnet.connectedDevices.find {it.type != "applicationGateways"})
+          }?.resourceId
 
-        if (!subnetId) {
-          task.updateStatus(BASE_PHASE, "Failed to create subnet for Application Gateway ${description.name}")
+          if (!subnetId) {
+            task.updateStatus(BASE_PHASE, "Failed to select subnet for Application Gateway ${description.name}")
+            throw new RuntimeException("Selected subnet $description.subnet in virtual network $description.vnet is not valid")
+          }
         } else {
-          description.vnet = virtualNetworkName
-          description.subnet = AzureUtilities.getNameFromResourceId(subnetId)
+          task.updateStatus(BASE_PHASE, "Creating subnet for application gateway")
 
-          task.updateStatus(BASE_PHASE, "Create new application gateway ${description.loadBalancerName} in ${description.region}...")
-          DeploymentExtended deployment = description.credentials.resourceManagerClient.createResourceFromTemplate(description.credentials,
-            AzureAppGatewayResourceTemplate.getTemplate(description),
-            resourceGroupName,
-            description.region,
-            description.loadBalancerName,
-            "appGateway")
+          // Compute the next subnet address prefix using the cached vnet and a random generated seed
+          def vnetDescription = networkProvider.get(description.accountName, description.region, virtualNetworkName)
+          Random rand = new Random()
+          def nextSubnetAddressPrefix = AzureVirtualNetworkDescription.getNextSubnetAddressPrefix(vnetDescription, rand.nextInt(vnetDescription?.maxSubnets ?: 1))
+          subnetName = AzureUtilities.getSubnetName(virtualNetworkName, nextSubnetAddressPrefix)
 
-          errList = AzureDeploymentOperation.checkDeploymentOperationStatus(task, BASE_PHASE, description.credentials, resourceGroupName, deployment.name)
-          loadBalancerName = description.name
+          // we'll do a final check to make sure that the subnet can be created before we pass it in the deployment template
+          def vnet = description.credentials.networkClient.getVirtualNetwork(resourceGroupName, virtualNetworkName)
+
+          if (!subnetName || vnet?.subnets?.find { it.name == subnetName }) {
+            // virtualNetworkName is not yet in the cache or the subnet we try to create already exists; we'll use the current vnet
+            //   we just got to re-compute the next subnet
+            vnetDescription = AzureVirtualNetworkDescription.getDescriptionForVirtualNetwork(vnet)
+            nextSubnetAddressPrefix = AzureVirtualNetworkDescription.getNextSubnetAddressPrefix(vnetDescription, rand.nextInt(vnetDescription?.maxSubnets ?: 1))
+            subnetName = AzureUtilities.getSubnetName(virtualNetworkName, nextSubnetAddressPrefix)
+          }
+
+          task.updateStatus(BASE_PHASE, "Creating new subnet ${subnetName} for ${description.loadBalancerName}")
+          subnetId = description.credentials.networkClient.createSubnet(resourceGroupName,
+            virtualNetworkName,
+            subnetName,
+            nextSubnetAddressPrefix,
+            description.securityGroup)
+
+          if (!subnetId) {
+            task.updateStatus(BASE_PHASE, "Failed to create new subnet for Application Gateway ${description.name}")
+            throw new RuntimeException("Could not create subnet $subnetName in virtual network $virtualNetworkName")
+          }
+
+          description.hasNewSubnet = true
         }
+
+        description.vnet = virtualNetworkName
+        description.subnet = AzureUtilities.getNameFromResourceId(subnetId)
+
+        task.updateStatus(BASE_PHASE, "Create new application gateway ${description.loadBalancerName} in ${description.region}...")
+        DeploymentExtended deployment = description.credentials.resourceManagerClient.createResourceFromTemplate(description.credentials,
+          AzureAppGatewayResourceTemplate.getTemplate(description),
+          resourceGroupName,
+          description.region,
+          description.loadBalancerName,
+          "appGateway")
+
+        errList = AzureDeploymentOperation.checkDeploymentOperationStatus(task, BASE_PHASE, description.credentials, resourceGroupName, deployment.name)
+        loadBalancerName = description.name
       }
     } catch (CloudException ce) {
       task.updateStatus(BASE_PHASE, "One or more deployment operations have failed. Please see Azure portal for more information. Resource Group: ${resourceGroupName} Application Gateway: ${description.loadBalancerName}")
