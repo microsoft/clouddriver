@@ -97,12 +97,13 @@ class UpsertAzureAppGatewayAtomicOperation implements AtomicOperation<Map> {
         errList = AzureDeploymentOperation.checkDeploymentOperationStatus(task, BASE_PHASE, description.credentials, resourceGroupName, deployment.name)
       } else {
         // We are attempting to create a new application gateway
-        description.credentials.resourceManagerClient.initializeResourceGroupAndVNet(description.credentials, resourceGroupName, virtualNetworkName, description.region)
+        if (!description.useDefaultVnet) {
+          task.updateStatus(BASE_PHASE, "Create ApplicationGateway using virtual network $description.vnet and subnet $description.subnet for server group $description.name")
 
-        if (description.vnet) {
-          task.updateStatus(BASE_PHASE, "Using virtual network $description.vnet and subnet $description.subnet for server group $description.name")
+          // Create corresponding ResourceGroup if it's not created already
+          description.credentials.resourceManagerClient.initializeResourceGroupAndVNet(description.credentials, resourceGroupName, null, description.region)
 
-          // we will try to associate the server group with the selected virtual network and subnet
+          // We will try to associate the server group with the selected virtual network and subnet
           description.hasNewSubnet = false
 
           def vnetDescription = networkProvider.get(description.accountName, description.region, description.vnet)
@@ -121,6 +122,9 @@ class UpsertAzureAppGatewayAtomicOperation implements AtomicOperation<Map> {
             throw new RuntimeException("Selected subnet $description.subnet in virtual network $description.vnet is not valid")
           }
         } else {
+          // Create ResourceGroup and default VirtualNetwork if they are not created already
+          description.credentials.resourceManagerClient.initializeResourceGroupAndVNet(description.credentials, resourceGroupName, virtualNetworkName, description.region)
+
           task.updateStatus(BASE_PHASE, "Creating subnet for application gateway")
 
           // Compute the next subnet address prefix using the cached vnet and a random generated seed
