@@ -111,9 +111,12 @@ class AzureUtilities {
     }
 
     def vals = id.split(PATH_SEPARATOR)
-    int idx = vals.findIndexOf { it == "Microsoft.Network"}
 
-    vals[idx + 2]
+    if (vals.length > 8) {
+      return vals[8] // see vals.findIndexOf { it == "Microsoft.Network"} + 2
+    } else {
+      return null
+    }
   }
 
   // For id = "/subscriptions/***-***-***/resourceGroups/***/providers/Microsoft.Network/networkInterfaces/nic1/ipConfigurations/ipconfig1"
@@ -124,9 +127,11 @@ class AzureUtilities {
     }
 
     def vals = id.split(PATH_SEPARATOR)
-    int idx = vals.findIndexOf { it == "Microsoft.Network"}
-
-    vals[idx + 1]
+    if (vals.length > 7) {
+      return vals[7] // see vals.findIndexOf { it == "Microsoft.Network"} + 1
+    } else {
+      return null
+    }
   }
 
   private static boolean validateIpv4PrefixMatch(Matcher matchResult) {
