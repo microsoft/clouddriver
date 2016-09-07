@@ -39,17 +39,6 @@ class AzureUtilities {
   static final String VNET_DEFAULT_ADDRESS_PREFIX = "10.0.0.0/8"
   static final int SUBNET_DEFAULT_ADDRESS_PREFIX_LENGTH = 24
 
-  static String getNameFromId(String resourceId) {
-    if (resourceId == null) {
-      return null
-    }
-    int idx = resourceId.lastIndexOf(PATH_SEPARATOR)
-    if (idx > 0) {
-      return resourceId.substring(idx + 1)
-    }
-    resourceId
-  }
-
   static String getResourceGroupName(AzureResourceOpsDescription description) {
     if (description == null) {
       return null
@@ -104,7 +93,8 @@ class AzureUtilities {
     azureResourceName.split(NAME_SEPARATOR).first()
   }
 
-  // ResourceId = "/subscriptions/***-***-***/resourceGroups/***/providers/Microsoft.Network/networkInterfaces/nic1"
+  // For resourceId = "/subscriptions/***-***-***/resourceGroups/***/providers/Microsoft.Network/networkInterfaces/nic1"
+  //   this method will return "nic1"
   static String getNameFromResourceId(String resourceId) {
     if (resourceId == null) {
       return null
@@ -113,28 +103,35 @@ class AzureUtilities {
     resourceId.split(PATH_SEPARATOR).last()
   }
 
-  // id = "/subscriptions/***-***-***/resourceGroups/***/providers/Microsoft.Network/networkInterfaces/nic1/ipConfigurations/ipconfig1"
+  // For id = "/subscriptions/***-***-***/resourceGroups/***/providers/Microsoft.Network/networkInterfaces/nic1/ipConfigurations/ipconfig1"
+  //   this method return "nic1"
   static String getResourceNameFromId(String id) {
     if (id == null) {
       return null
     }
 
     def vals = id.split(PATH_SEPARATOR)
-    int idx = vals.findIndexOf { it == "Microsoft.Network"}
 
-    vals[idx + 2]
+    if (vals.length > 8) {
+      return vals[8] // see vals.findIndexOf { it == "Microsoft.Network"} + 2
+    } else {
+      return null
+    }
   }
 
-  // id = "/subscriptions/***-***-***/resourceGroups/***/providers/Microsoft.Network/networkInterfaces/nic1/ipConfigurations/ipconfig1"
+  // For id = "/subscriptions/***-***-***/resourceGroups/***/providers/Microsoft.Network/networkInterfaces/nic1/ipConfigurations/ipconfig1"
+  //   this method will return "networkInterfaces"
   static String getResourceTypeFromId(String id) {
     if (id == null) {
       return null
     }
 
     def vals = id.split(PATH_SEPARATOR)
-    int idx = vals.findIndexOf { it == "Microsoft.Network"}
-
-    vals[idx + 1]
+    if (vals.length > 7) {
+      return vals[7] // see vals.findIndexOf { it == "Microsoft.Network"} + 1
+    } else {
+      return null
+    }
   }
 
   private static boolean validateIpv4PrefixMatch(Matcher matchResult) {

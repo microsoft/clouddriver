@@ -72,6 +72,7 @@ class UpsertAzureAppGatewayAtomicOperationSpec extends Specification{
   "vnet" : null,
   "subnet" : null,
   "hasNewSubnet" : null,
+  "useDefaultVnet" : false,
   "securityGroup" : null,
   "dnsName" : null,
   "cluster" : null,
