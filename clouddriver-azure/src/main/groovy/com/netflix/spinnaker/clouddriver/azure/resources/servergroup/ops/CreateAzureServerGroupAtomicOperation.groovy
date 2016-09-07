@@ -91,7 +91,7 @@ class CreateAzureServerGroupAtomicOperation implements AtomicOperation<Map> {
         throw new RuntimeException("Selected virtual network $virtualNetworkName does not exist")
       }
 
-      if (description.subnet) {
+      if (!description.createNewSubnet) {
         task.updateStatus(BASE_PHASE, "Using virtual network $virtualNetworkName and subnet $description.subnet for server group $description.name")
 
         // we will try to associate the server group with the selected virtual network and subnet

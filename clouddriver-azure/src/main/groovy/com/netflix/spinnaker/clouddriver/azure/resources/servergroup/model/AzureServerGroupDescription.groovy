@@ -62,6 +62,7 @@ class AzureServerGroupDescription extends AzureResourceOpsDescription implements
   String vnet
   String subnet
   Boolean hasNewSubnet
+  Boolean createNewSubnet = false
 
   static class AzureScaleSetSku {
     String name
@@ -156,10 +157,10 @@ class AzureServerGroupDescription extends AzureResourceOpsDescription implements
     // TODO: appGatewayBapId can be retrieved via scaleSet->networkProfile->networkInterfaceConfigurations->ipConfigurations->ApplicationGatewayBackendAddressPools
     azureSG.subnetId = scaleSet.tags?.subnetId
     azureSG.subnet = AzureUtilities.getNameFromResourceId(azureSG.subnetId)
-    if (azureSG.subnet) {
-      def vals = azureSG.subnetId.split(AzureUtilities.PATH_SEPARATOR)
-      int idx = vals.findIndexOf { it == "Microsoft.Network"}
-      azureSG.vnet = vals[idx + 2]
+    if (azureSG.subnetId) {
+      azureSG.vnet = AzureUtilities.getNameFromResourceId(azureSG.subnetId)
+    } else {
+      azureSG.vnet = scaleSet.tags?.vnet
     }
     azureSG.hasNewSubnet = scaleSet.tags?.hasNewSubnet
 
