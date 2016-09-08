@@ -38,6 +38,7 @@ class AzureUtilities {
   static final String INBOUND_NATPOOL_PREFIX = "np-"
   static final String VNET_DEFAULT_ADDRESS_PREFIX = "10.0.0.0/8"
   static final int SUBNET_DEFAULT_ADDRESS_PREFIX_LENGTH = 24
+  static final int PROVIDER_TYPE_INDEX_IN_RESOURCEID = 6
 
   static String getResourceGroupName(AzureResourceOpsDescription description) {
     if (description == null) {
@@ -112,8 +113,8 @@ class AzureUtilities {
 
     def vals = id.split(PATH_SEPARATOR)
 
-    if (vals.length > 8) {
-      return vals[8] // see vals.findIndexOf { it == "Microsoft.Network"} + 2
+    if (vals.length > PROVIDER_TYPE_INDEX_IN_RESOURCEID + 2) {
+      return vals[PROVIDER_TYPE_INDEX_IN_RESOURCEID + 2] // see vals.findIndexOf { it == "Microsoft.Network"} + 2
     } else {
       return null
     }
@@ -127,8 +128,8 @@ class AzureUtilities {
     }
 
     def vals = id.split(PATH_SEPARATOR)
-    if (vals.length > 7) {
-      return vals[7] // see vals.findIndexOf { it == "Microsoft.Network"} + 1
+    if (vals.length > PROVIDER_TYPE_INDEX_IN_RESOURCEID + 1) {
+      return vals[PROVIDER_TYPE_INDEX_IN_RESOURCEID + 1] // see vals.findIndexOf { it == "Microsoft.Network"} + 1
     } else {
       return null
     }

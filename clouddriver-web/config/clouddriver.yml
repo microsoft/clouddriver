@@ -10,7 +10,7 @@ redis:
 
 services:
   front50:
-    baseUrl: http://localhost:8080
+    baseUrl: http://localhost:9080
 
 swagger:
   enabled: true
@@ -84,7 +84,7 @@ azure:
       appKey: ${AZURE_APPKEY}
       tenantId: ${AZURE_TENANT_ID}
       subscriptionId: ${AZURE_SUBSCRIPTION_ID}
-      regions: ["westus", "westus2", "eastus", "eastus2"]
+      regions: ["westus", "eastus", "westus2"]
       vmImages:
       - publisher: "MicrosoftWindowsServer"
         offer: "WindowsServer"
