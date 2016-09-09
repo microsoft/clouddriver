@@ -157,11 +157,7 @@ class AzureServerGroupDescription extends AzureResourceOpsDescription implements
     // TODO: appGatewayBapId can be retrieved via scaleSet->networkProfile->networkInterfaceConfigurations->ipConfigurations->ApplicationGatewayBackendAddressPools
     azureSG.subnetId = scaleSet.tags?.subnetId
     azureSG.subnet = AzureUtilities.getNameFromResourceId(azureSG.subnetId)
-    if (azureSG.subnetId) {
-      azureSG.vnet = AzureUtilities.getNameFromResourceId(azureSG.subnetId)
-    } else {
-      azureSG.vnet = scaleSet.tags?.vnet
-    }
+    azureSG.vnet = azureSG.subnetId? AzureUtilities.getNameFromResourceId(azureSG.subnetId) : scaleSet.tags?.vnet
     azureSG.hasNewSubnet = scaleSet.tags?.hasNewSubnet
 
     azureSG.createdTime = scaleSet.tags?.createdTime?.toLong()

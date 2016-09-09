@@ -71,8 +71,10 @@ class AzureSubnetDescription extends AzureResourceOpsDescription {
     }?.sort { a,b -> a.ipv4 <=> b.ipv4}
   }
 
-  // This is API is an workaround which retrieves the Azure ApplicationGateway associations until applicationGatewayIPConfigurations is captured in the Azure Subnet
-  //   It should be later replaced by a simple iteration through applicationGatewayIPConfigurations once that is available in the Azure JSDK
+  // This is a temporary workaround for a missing API in Azure Java SDK which should retrieve any Azure ApplicationGateway
+  //   associations with the subnet via applicationGatewayIPConfigurations is captured in the Azure Subnet. It should be
+  //   later replaced by a simple iteration through applicationGatewayIPConfigurations once that property becomes available
+  //   in the Azure JSDK
   static void getAppGatewaysConnectedResources(AzureVirtualNetworkDescription vnet, List<ApplicationGateway> appGateways) {
     if (vnet.subnets && appGateways) {
       appGateways.each { appGateway ->

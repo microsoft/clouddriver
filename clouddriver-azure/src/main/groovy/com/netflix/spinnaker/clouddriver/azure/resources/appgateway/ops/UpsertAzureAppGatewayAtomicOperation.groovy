@@ -63,7 +63,7 @@ class UpsertAzureAppGatewayAtomicOperation implements AtomicOperation<Map> {
     String resourceGroupName = null
     String virtualNetworkName = null
     String subnetName = null
-    String subnetId
+    String subnetId = null
     String loadBalancerName = null
 
     try {
