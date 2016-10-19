@@ -67,7 +67,7 @@ class SafeRetry<T> {
         } catch (GoogleJsonResponseException jsonException) {
           if (jsonException.statusCode in successfulErrorCodes) {
             log.warn "Retry $action of $resource encountered ${jsonException.statusCode}, treating as success..."
-            return
+            return null
           } else if (jsonException.statusCode in retryCodes) {
             log.warn "Retry $action of $resource encountered ${jsonException.statusCode} with error message: ${jsonException.message}. Trying again..."
           } else {
@@ -83,9 +83,18 @@ class SafeRetry<T> {
       if (lastSeenException && lastSeenException instanceof GoogleJsonResponseException) {
         def lastSeenError = lastSeenException?.getDetails()?.getErrors()[0] ?: null
         if (lastSeenError) {
-          throw new GoogleOperationException("Failed to $action $resource after #$tries."
-            + " Last seen exception has status code ${lastSeenException.getStatusCode()} with error message ${lastSeenError.getMessage()}"
-            + " and reason ${lastSeenError.getReason()}.")
+          if (lastSeenError.getReason() == 'resourceInUseByAnotherResource') {
+            // Don't fail the operation if the resource is in use. The main use case for this is resiliency in delete operations -
+            // we don't want to fail the operation if something is in use by another resource.
+            log.warn("Failed to $action $resource after #$tries."
+              + " Last seen exception has status code ${lastSeenException.getStatusCode()} with error message ${lastSeenError.getMessage()}"
+              + " and reason ${lastSeenError.getReason()}.")
+            return null
+          } else {
+            throw new GoogleOperationException("Failed to $action $resource after #$tries."
+              + " Last seen exception has status code ${lastSeenException.getStatusCode()} with error message ${lastSeenError.getMessage()}"
+              + " and reason ${lastSeenError.getReason()}.")
+          }
         } else {
           throw new GoogleOperationException("Failed to $action $resource after #$tries."
             + " Last seen exception has status code ${lastSeenException.getStatusCode()} with message ${lastSeenException.getMessage()}.")

@@ -37,6 +37,8 @@ class DeployKubernetesAtomicOperationDescription extends KubernetesAtomicOperati
   List<KubernetesVolumeSource> volumeSources
   Capacity capacity
   KubernetesScalingPolicy scalingPolicy
+  Map<String, String> replicaSetAnnotations
+  Map<String, String> podAnnotations
 }
 
 @AutoClone
@@ -80,11 +82,20 @@ class KubernetesContainerDescription {
   KubernetesProbe livenessProbe
   KubernetesProbe readinessProbe
 
+  KubernetesLifecycle lifecycle
+
   List<KubernetesVolumeMount> volumeMounts
   List<KubernetesEnvVar> envVars
 
   List<String> command
   List<String> args
+}
+
+@AutoClone
+@Canonical
+class KubernetesLifecycle {
+  KubernetesHandler postStart
+  KubernetesHandler preStop
 }
 
 @AutoClone
@@ -160,6 +171,9 @@ enum KubernetesVolumeSourceType {
   @JsonProperty("SECRET")
   Secret,
 
+  @JsonProperty("CONFIGMAP")
+  ConfigMap,
+
   @JsonProperty("UNSUPPORTED")
   Unsupported,
 }
@@ -181,6 +195,23 @@ class KubernetesVolumeSource {
   KubernetesEmptyDir emptyDir
   KubernetesPersistentVolumeClaim persistentVolumeClaim
   KubernetesSecretVolumeSource secret
+  KubernetesConfigMapVolumeSource configMap
+}
+
+@AutoClone
+@Canonical
+class KubernetesConfigMapVolumeSource {
+  String configMapName
+  List<KubernetesKeyToPath> items
+  Integer defaultMode
+}
+
+@AutoClone
+@Canonical
+class KubernetesKeyToPath {
+  String key
+  String path
+  Integer defaultMode
 }
 
 @AutoClone
