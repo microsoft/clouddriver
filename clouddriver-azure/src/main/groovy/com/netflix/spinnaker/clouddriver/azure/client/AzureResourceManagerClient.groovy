@@ -253,16 +253,17 @@ class AzureResourceManagerClient extends AzureBaseClient {
   }
 
   static String convertParametersToTemplateJSON(ObjectMapper mapper, Map<String, Object> sourceParameters) {
-    def parameters = [:]
-    sourceParameters.each {
-      if (it.value.class == String) {
-        parameters[it.key] = new ValueParameter(it.value)
-      }
-      else {
-        parameters[it.key] = new ReferenceParameter(it.value)
-      }
-    }
-    mapper.writeValueAsString(parameters)
+    //def parameters = [:]
+    //sourceParameters.each {
+    //  if (it.value.class == String) {
+    //    parameters[it.key] = new ValueParameter(it.value)
+    //  }
+    //  else {
+    //    parameters[it.key] = new ReferenceParameter(it.value)
+    //  }
+    //}
+    def parameters2 = sourceParameters.collectEntries{[it.key, (it.value.class == String ? new ValueParameter(it.value) : new ReferenceParameter(it.value))]}
+    mapper.writeValueAsString(parameters2)
   }
 
   /**

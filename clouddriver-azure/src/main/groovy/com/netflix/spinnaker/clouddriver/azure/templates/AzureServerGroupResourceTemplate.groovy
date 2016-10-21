@@ -396,12 +396,13 @@ class AzureServerGroupResourceTemplate {
     }
   }
 
+  interface ScaleSetOsProfile {}
+
   // ***OSProfile
-  static class ScaleSetOsProfileProperty {
+  static class ScaleSetOsProfileProperty implements ScaleSetOsProfile {
     String computerNamePrefix
     String adminUsername
     String adminPassword
-    String customData
 
     /**
      *
@@ -413,6 +414,15 @@ class AzureServerGroupResourceTemplate {
       log.info("computerNamePrefix will be truncated to 10 characters to maintain Azure restrictions")
       adminUsername = "[parameters('${vmUserNameParameterName}')]"
       adminPassword = "[parameters('${vmPasswordParameterName}')]"
+
+    }
+  }
+
+  static class ScaleSetOsProfileCustomDataProperty extends ScaleSetOsProfileProperty implements ScaleSetOsProfile {
+    String customData
+
+    ScaleSetOsProfileCustomDataProperty(AzureServerGroupDescription description) {
+      super(description)
       customData = "[base64(parameters('customData'))]"
     }
   }
@@ -547,14 +557,16 @@ class AzureServerGroupResourceTemplate {
    */
   static class ScaleSetVMProfileProperty implements ScaleSetVMProfile {
     StorageProfile storageProfile
-    ScaleSetOsProfileProperty osProfile
+    ScaleSetOsProfile osProfile
     ScaleSetNetworkProfileProperty networkProfile
 
     ScaleSetVMProfileProperty(AzureServerGroupDescription description) {
       storageProfile = description.image.isCustom ?
         new ScaleSetCustomImageStorageProfile(description) :
         new ScaleSetStorageProfile(description)
-      osProfile = new ScaleSetOsProfileProperty(description)
+      osProfile = description.osConfig.customData ?
+        new ScaleSetOsProfileCustomDataProperty(description) :
+        new ScaleSetOsProfileProperty(description)
       networkProfile = new ScaleSetNetworkProfileProperty(description)
 
     }

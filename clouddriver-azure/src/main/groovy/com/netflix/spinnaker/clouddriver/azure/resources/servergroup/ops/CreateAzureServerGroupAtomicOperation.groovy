@@ -184,7 +184,7 @@ class CreateAzureServerGroupAtomicOperation implements AtomicOperation<Map> {
         description.credentials.subscriptionId,
         description.credentials.defaultResourceGroup,
         description.credentials.defaultKeyVault)
-      templateParameters[AzureServerGroupResourceTemplate.customDataParameterName] = description.osConfig.customData ?: "nodata"
+      templateParameters[AzureServerGroupResourceTemplate.customDataParameterName] = description.osConfig.customData ?: ""
 
       if (errList.isEmpty()) {
         description.subnetId = subnetId
