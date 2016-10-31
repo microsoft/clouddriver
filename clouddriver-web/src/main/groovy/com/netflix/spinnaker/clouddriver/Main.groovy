@@ -16,7 +16,6 @@
 
 package com.netflix.spinnaker.clouddriver
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.netflix.spinnaker.clouddriver.aws.AwsConfiguration
 import com.netflix.spinnaker.clouddriver.azure.AzureConfiguration
 import com.netflix.spinnaker.clouddriver.cf.config.CloudFoundryConfig
@@ -31,17 +30,15 @@ import com.netflix.spinnaker.clouddriver.kubernetes.KubernetesConfiguration
 import com.netflix.spinnaker.clouddriver.openstack.OpenstackConfiguration
 import com.netflix.spinnaker.clouddriver.security.config.SecurityConfig
 import com.netflix.spinnaker.clouddriver.titus.TitusConfiguration
-import org.springframework.boot.actuate.autoconfigure.EndpointMBeanExportAutoConfiguration
+import com.netflix.spinnaker.config.ErrorConfiguration
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.boot.autoconfigure.batch.BatchAutoConfiguration
 import org.springframework.boot.autoconfigure.groovy.template.GroovyTemplateAutoConfiguration
 import org.springframework.boot.builder.SpringApplicationBuilder
-import org.springframework.boot.web.support.SpringBootServletInitializer
-import org.springframework.context.annotation.Bean
+import org.springframework.boot.context.web.SpringBootServletInitializer
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
-import org.springframework.context.annotation.Primary
 import org.springframework.scheduling.annotation.EnableScheduling
 import sun.net.InetAddressCachePolicy
 
@@ -50,6 +47,7 @@ import java.security.Security
 @Configuration
 @Import([
   WebConfig,
+  ErrorConfiguration,
   CloudDriverConfig,
   DeployConfiguration,
   RetrofitConfig,
@@ -71,7 +69,6 @@ import java.security.Security
 @EnableAutoConfiguration(exclude = [
     BatchAutoConfiguration,
     GroovyTemplateAutoConfiguration,
-    EndpointMBeanExportAutoConfiguration
 ])
 @EnableScheduling
 class Main extends SpringBootServletInitializer {
@@ -103,13 +100,6 @@ class Main extends SpringBootServletInitializer {
   @Override
   SpringApplicationBuilder configure(SpringApplicationBuilder application) {
     application.properties(DEFAULT_PROPS).sources(Main)
-  }
-
-
-  @Bean
-  @Primary
-  ObjectMapper objectMapper() {
-    new ObjectMapper()
   }
 
   static String[] launchArgs = []

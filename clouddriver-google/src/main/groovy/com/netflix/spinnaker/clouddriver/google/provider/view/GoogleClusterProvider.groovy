@@ -30,6 +30,7 @@ import com.netflix.spinnaker.clouddriver.google.model.loadbalancing.GoogleHttpLo
 import com.netflix.spinnaker.clouddriver.google.model.loadbalancing.GoogleInternalLoadBalancer
 import com.netflix.spinnaker.clouddriver.google.model.loadbalancing.GoogleLoadBalancer
 import com.netflix.spinnaker.clouddriver.google.model.loadbalancing.GoogleLoadBalancerType
+import com.netflix.spinnaker.clouddriver.google.model.loadbalancing.GoogleSslLoadBalancer
 import com.netflix.spinnaker.clouddriver.model.ClusterProvider
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
@@ -171,6 +172,9 @@ class GoogleClusterProvider implements ClusterProvider<GoogleCluster.View> {
         case GoogleLoadBalancerType.NETWORK:
           loadBalancer = objectMapper.convertValue(it.attributes, GoogleLoadBalancer)
           break
+        case GoogleLoadBalancerType.SSL:
+          loadBalancer = objectMapper.convertValue(it.attributes, GoogleSslLoadBalancer)
+          break
         default:
           loadBalancer = null
           break
@@ -203,10 +207,14 @@ class GoogleClusterProvider implements ClusterProvider<GoogleCluster.View> {
       Utils.determineInternalLoadBalancerDisabledState(loadBalancer, serverGroup)
     }
 
-    // Health states for L7 load balancer.
     def httpLoadBalancers = loadBalancers.findAll { it.type == GoogleLoadBalancerType.HTTP }
     def httpDisabledStates = httpLoadBalancers.collect { loadBalancer ->
         Utils.determineHttpLoadBalancerDisabledState(loadBalancer, serverGroup)
+    }
+
+    def sslLoadBalancers = loadBalancers.findAll { it.type == GoogleLoadBalancerType.SSL }
+    def sslDisabledStates = sslLoadBalancers.collect { loadBalancer ->
+      Utils.determineSslLoadBalancerDisabledState(loadBalancer, serverGroup)
     }
 
     // Health states for Consul.
@@ -219,8 +227,8 @@ class GoogleClusterProvider implements ClusterProvider<GoogleCluster.View> {
 
     def isDisabled = true
     // TODO: Extend this for future load balancers that calculate disabled state after caching.
-    def ilbAndHttpOnly = (internalDisabledStates || httpDisabledStates) &&
-      internalDisabledStates.size() + httpDisabledStates.size() == loadBalancers.size()
+    def excludesNetwork = (internalDisabledStates || httpDisabledStates || sslDisabledStates) &&
+      internalDisabledStates.size() + httpDisabledStates.size() + sslDisabledStates.size() == loadBalancers.size()
 
     if (httpDisabledStates) {
       isDisabled &= httpDisabledStates.every { it }
@@ -228,7 +236,10 @@ class GoogleClusterProvider implements ClusterProvider<GoogleCluster.View> {
     if (internalDisabledStates) {
       isDisabled &= internalDisabledStates.every { it }
     }
-    serverGroup.disabled = ilbAndHttpOnly ? isDisabled : isDisabled && serverGroup.disabled
+    if (sslDisabledStates) {
+      isDisabled &= sslDisabledStates.every { it }
+    }
+    serverGroup.disabled = excludesNetwork ? isDisabled : isDisabled && serverGroup.disabled
 
     // Now that disabled is set based on L7 & L4 state, we need to take Consul into account.
     if (consulDiscoverable) {
