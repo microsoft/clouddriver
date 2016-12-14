@@ -10,7 +10,7 @@ redis:
 
 services:
   front50:
-    baseUrl: http://localhost:8080
+    baseUrl: http://localhost:9080
 
 swagger:
   enabled: true
@@ -59,7 +59,8 @@ aws:
   #  proxyWorkstation: foo
   #  protocol: HTTP
   defaults:
-    iamRole: FooRole
+    name: default
+    iamRole: BaseIAMRole_2
     instanceClassBlockDevices:
     - instanceClass: m3
       blockDevices:
@@ -68,8 +69,8 @@ aws:
       - deviceName: /dev/sdc
         virtualName: ephemeral1
   defaultRegions:
-    - name: us-east-1
-  defaultKeyPairTemplate: '{{name}}-keypair'
+    - name: us-west-2
+  defaultKeyPairTemplate: 'milismsft-keypair'
 
   # an empty list means we are directly managing the AWS account we have credentials for (named default.account.env)
   # see prod profile section below for an example configuration to manage other accounts via STS assume role
@@ -80,12 +81,12 @@ azure:
   defaults:
 
   accounts:
-    - name: my-azure-account
+    - name: azure-cred1
       clientId: ${AZURE_CLIENT_ID}
       appKey: ${AZURE_APPKEY}
       tenantId: ${AZURE_TENANT_ID}
       subscriptionId: ${AZURE_SUBSCRIPTION_ID}
-      regions: ["westus", "eastus", "eastus2", "centralus"]
+      regions: ["westus", "westus2", "eastus", "eastus2", "centralus"]
       defaultResourceGroup: ${AZURE_DEFAULT_RESOURCE_GROUP:"SpinnakerDefault"}
       defaultKeyVault: ${AZURE_DEFAULT_KEYVAULT}
       vmImages:
